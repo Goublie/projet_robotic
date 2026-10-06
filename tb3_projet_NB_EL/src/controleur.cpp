@@ -5,7 +5,9 @@
 #include <string>
 // a completer
 
-#define FREQUENCY 0.5
+double var_freq = nh.getParam("freq", var_freq);
+
+#define FREQUENCY var_freq
 #define MAX_LINEAR_SPEED 0.15
 #define MAX_ANGULAR_SPEED 2.84
 #define LINEAR_SPEED 0.1
@@ -69,9 +71,11 @@ int main(int argc, char **argv) {
 
     // a completer ...
     msg.data = "Hello World";
+    
     send_msg(msg);
     pub_msg.publish(msg);
     cmd.publish(msg);
+
     int mode = AV;
     if (cpt == 2) {
       mode = ARR;

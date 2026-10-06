@@ -1,7 +1,9 @@
 <launch>
 
-<arg name="freq" default="10" />
+<arg name="user_freq" default="0.5" />
 
-<node  name = "controleur"  pkg = "mon_package"  type = "controleur" output = "screen" />
+<param name="freq" type="double" value="$(arg user_freq)">
+
+<node name = "controleur" pkg = "mon_package" type = "controleur" output = "screen" />
 
 </launch>
