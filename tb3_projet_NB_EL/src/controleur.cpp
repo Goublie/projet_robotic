@@ -62,6 +62,7 @@ void send_msg(String msg) {
 
 void kbCallback(std_msgs::Int8 kbInput) {
   match (kbInput.data) {
+   //COMMANDES DE VITESSE 1
     case kbInput.data == 122 : // z
       avancer(0.2);
       break;
@@ -74,6 +75,51 @@ void kbCallback(std_msgs::Int8 kbInput) {
     case kbInput.data == 100 : // d
       trouner(-0.2);
       break;
+  //COMMANDES DE VITESSE 2
+  
+     case kbInput.data == 116 : // t
+      avancer(0.4);
+      break;
+    case kbInput.data == 103 : // g
+      reculer(0.4);
+      break;
+    case kbInput.data == 102 : // f
+      trouner(0.4);
+      break; 
+    case kbInput.data == 104 : // h
+      trouner(-0.4);
+      break;
+
+    //COMMANDES DE VITESSE 3
+  
+     case kbInput.data == 105 : // i
+      avancer(0.6);
+      break;
+    case kbInput.data == 107 : // k
+      reculer(0.6);
+      break;
+    case kbInput.data == 106 : // j
+      trouner(0.6);
+      break; 
+    case kbInput.data == 108 : // l
+      trouner(-0.6);
+      break;
+  
+      //COMMANDES DE VITESSE 4
+  
+     case kbInput.data == 56 : // 8
+      avancer(0.2);
+      break;
+    case kbInput.data == 53 : // 5
+      reculer(0.2);
+      break;
+    case kbInput.data == 52 : // 4
+      trouner(0.2);
+      break; 
+    case kbInput.data == 54 : // 6
+      trouner(-0.2);
+      break;
+    
   };
 }
 
