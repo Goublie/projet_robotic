@@ -1,5 +1,6 @@
 <launch>
 
+<arg name="freq" default="10" />
 
 <node  name = "controleur"  pkg = "mon_package"  type = "controleur" output = "screen" />
 
