@@ -6,9 +6,7 @@
 #include <std_msgs/Int8.h>
 // a completer
 
-double var_freq = nh.getParam("freq", var_freq);
-
-#define FREQUENCY var_freq
+#define FREQUENCY 0.5
 #define MAX_LINEAR_SPEED 0.15
 #define MAX_ANGULAR_SPEED 2.84
 #define LINEAR_SPEED 0.1
@@ -26,6 +24,7 @@ void sigintHandler(int sig);
 
 // Les variables globales
 Publisher pub_msg;
+Publisher pub_vel;
 Publisher cmd;
 String msg;
 double linear_speed = LINEAR_SPEED;
@@ -34,15 +33,20 @@ double frequence = FREQUENCY;
 Subscriber KeyInput_Sub;
 
 // L'impl des fonctions
-void arreter() {
-  avancer(0.0);
-}
 void avancer(double v) {
   Twist cmd;
   cmd.linear.x = v;
   cmd.angular.z = 0;
 
-  geometry_msgs.publish(cmd);
+  pub_vel.publish(cmd);
+}
+
+void reculer(double v) {
+  avancer(-v);
+}
+
+void arreter() {
+  avancer(0.0);
 }
 
 void tourner(double a) {
@@ -50,7 +54,7 @@ void tourner(double a) {
   cmd.linear.x = 0;
   cmd.angular.z = a;
 
-  geometry_msgs.publish(cmd);
+  pub_vel.publish(cmd);
 }
 
 void send_msg(String msg) {
@@ -61,65 +65,63 @@ void send_msg(String msg) {
 }
 
 void kbCallback(std_msgs::Int8 kbInput) {
-  match (kbInput.data) {
+  switch (kbInput.data) {
    //COMMANDES DE VITESSE 1
-    case kbInput.data == 122 : // z
+      case 122 : // z
       avancer(0.2);
       break;
-    case kbInput.data == 115 : // s
+    case 115 : // s
       reculer(0.2);
       break;
-    case kbInput.data == 113 : // q
-      trouner(0.2);
-      break; 
-    case kbInput.data == 100 : // d
-      trouner(-0.2);
+    case 113 : // q
+      tourner(0.2);
+      break;
+    case 100 : // d
+      tourner(-0.2);
       break;
   //COMMANDES DE VITESSE 2
-  
-     case kbInput.data == 116 : // t
+
+     case 116 : // t
       avancer(0.4);
       break;
-    case kbInput.data == 103 : // g
+    case 103 : // g
       reculer(0.4);
       break;
-    case kbInput.data == 102 : // f
-      trouner(0.4);
-      break; 
-    case kbInput.data == 104 : // h
-      trouner(-0.4);
+    case 102 : // f
+      tourner(0.4);
+      break;
+    case 104 : // h
+      tourner(-0.4);
       break;
 
     //COMMANDES DE VITESSE 3
-  
-     case kbInput.data == 105 : // i
+
+    case 105 : // i
       avancer(0.6);
       break;
-    case kbInput.data == 107 : // k
+    case 107 : // k
       reculer(0.6);
       break;
-    case kbInput.data == 106 : // j
-      trouner(0.6);
-      break; 
-    case kbInput.data == 108 : // l
-      trouner(-0.6);
+    case 106 : // j
+      tourner(0.6);
       break;
-  
+    case 108 : // l
+      tourner(-0.6);
+      break;
       //COMMANDES DE VITESSE 4
-  
-     case kbInput.data == 56 : // 8
+
+     case 56 : // 8
       avancer(0.2);
       break;
-    case kbInput.data == 53 : // 5
+    case 53 : // 5
       reculer(0.2);
       break;
-    case kbInput.data == 52 : // 4
-      trouner(0.2);
-      break; 
-    case kbInput.data == 54 : // 6
-      trouner(-0.2);
+    case 52 : // 4
+      tourner(0.2);
       break;
-    
+    case 54 : // 6
+      tourner(-0.2);
+      break;
   };
 }
 
