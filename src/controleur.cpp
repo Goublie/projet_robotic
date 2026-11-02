@@ -2,9 +2,8 @@
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
 #include <std_msgs/Int8.h>
-#include <std_msgs/String.h> //ajout
+#include <std_msgs/String.h>
 #include <string>
-// a completer
 
 #define FREQUENCY 0.5
 #define MAX_LINEAR_SPEED 0.15
@@ -157,17 +156,13 @@ int main(int argc, char **argv) {
   while (ok()) {
 
     // a completer ...
-    //msg.data = "Hello World";
+    msg.data = "Hello World";
 
-    //send_msg(msg);
-    //pub_msg.publish(msg);
-    //cmd.publish(msg);
+    send_msg(msg);
+    pub_msg.publish(msg);
+    cmd.publish(msg);
 
     //move();
-
-    // INTERCEPTION CLAVIER
-
-    // INTERCEPTION CLAVIER
 
     spinOnce();
     loop_rate.sleep();
