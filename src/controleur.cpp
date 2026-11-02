@@ -14,6 +14,8 @@
 #define ARR 2
 int cpt = 0;
 
+enum state { manual, autonomous };
+
 using namespace ros;
 using namespace std_msgs;
 using namespace geometry_msgs;
@@ -22,6 +24,7 @@ using namespace geometry_msgs;
 void sigintHandler(int sig);
 
 // Les variables globales
+state actual_state = manual;
 Publisher pub_msg;
 Publisher pub_vel;
 Publisher cmd;
@@ -62,62 +65,62 @@ void send_msg(String msg) {
 void kbCallback(std_msgs::Int8 kbInput) {
   switch (kbInput.data) {
     // COMMANDES DE VITESSE 1
-        case 122: // z
-            avancer(0.2);
-            break;
-        case 115: // s
-            reculer(0.2);
-            break;
-        case 113: // q
-            tourner(0.2);
-            break;
-        case 100: // d
-            tourner(-0.2);
-            break;
-            // COMMANDES DE VITESSE 2
+  case 122: // z
+    avancer(0.2);
+    break;
+  case 115: // s
+    reculer(0.2);
+    break;
+  case 113: // q
+    tourner(0.2);
+    break;
+  case 100: // d
+    tourner(-0.2);
+    break;
+    // COMMANDES DE VITESSE 2
 
-        case 116: // t
-            avancer(0.4);
-            break;
-        case 103: // g
-            reculer(0.4);
-            break;
-        case 102: // f
-            tourner(0.4);
-            break;
-        case 104: // h
-            tourner(-0.4);
-            break;
+  case 116: // t
+    avancer(0.4);
+    break;
+  case 103: // g
+    reculer(0.4);
+    break;
+  case 102: // f
+    tourner(0.4);
+    break;
+  case 104: // h
+    tourner(-0.4);
+    break;
 
-            // COMMANDES DE VITESSE 3
+    // COMMANDES DE VITESSE 3
 
-        case 105: // i
-            avancer(0.6);
-            break;
-        case 107: // k
-            reculer(0.6);
-            break;
-        case 106: // j
-            tourner(0.6);
-            break;
-        case 108: // l
-            tourner(-0.6);
-            break;
-            // COMMANDES DE VITESSE 4
+  case 105: // i
+    avancer(0.6);
+    break;
+  case 107: // k
+    reculer(0.6);
+    break;
+  case 106: // j
+    tourner(0.6);
+    break;
+  case 108: // l
+    tourner(-0.6);
+    break;
+    // COMMANDES DE VITESSE 4
 
-        case 56: // 8
-            avancer(0.2);
-            break;
-        case 53: // 5
-            reculer(0.2);
-            break;
-        case 52: // 4
-            tourner(0.2);
-            break;
-        case 54: // 6
-            tourner(-0.2);
-            break;
-        };
+  case 56: // 8
+    avancer(0.2);
+    break;
+  case 53: // 5
+    reculer(0.2);
+    break;
+  case 52: // 4
+    tourner(0.2);
+    break;
+  case 54: // 6
+    tourner(-0.2);
+    break;
+  };
 }
 
 void move() {
@@ -149,6 +152,16 @@ int main(int argc, char **argv) {
   pub_vel = nh.advertise<Twist>("/cmd_vel", 10);
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
 
+  nh.getParam("user_freq", frequence);
+
+  std::string state_str;
+  if (nh.getParam("actual_state", state_str)) {
+    if (state_str == "autonomous") {
+      actual_state = autonomous;
+    } else {
+      actual_state = manual;
+    }
+  }
   // a completer...
 
   Rate loop_rate(frequence);
@@ -162,7 +175,13 @@ int main(int argc, char **argv) {
     pub_msg.publish(msg);
     cmd.publish(msg);
 
-    //move();
+    switch (actual_state) {
+    case manual:
+      break;
+    case autonomous:
+      move();
+      break;
+    }
 
     spinOnce();
     loop_rate.sleep();
