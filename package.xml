@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>tb3_projet_NB_EL</name>
+  <name>projet_robotic</name>
   <version>0.0.0</version>
-  <description>The tb3_projet_NB_EL package</description>
+  <description>The projet_robotic package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(tb3_projet_NB_EL)
+project(projet_robotic)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -213,3 +213,10 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+add_executable(controleur src/controleur.cpp)
+add_dependencies(controleur ${catkin_EXPORTED_TARGETS})
+target_link_libraries(controleur ${catkin_LIBRARIES})
+
+add_executable(key_input_node src/key_input_node.cpp)
+add_dependencies(key_input_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(key_input_node ${catkin_LIBRARIES})

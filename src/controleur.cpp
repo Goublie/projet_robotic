@@ -1,9 +1,9 @@
 #include <csignal>
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
+#include <std_msgs/Int8.h>
 #include <std_msgs/String.h> //ajout
 #include <string>
-#include <std_msgs/Int8.h>
 // a completer
 
 #define FREQUENCY 0.5
@@ -34,27 +34,23 @@ Subscriber KeyInput_Sub;
 
 // L'impl des fonctions
 void avancer(double v) {
-  Twist cmd;
-  cmd.linear.x = v;
-  cmd.angular.z = 0;
+  Twist cmd_vel1;
+  cmd_vel1.linear.x = v;
+  cmd_vel1.angular.z = 0;
 
-  pub_vel.publish(cmd);
+  pub_vel.publish(cmd_vel1);
 }
 
-void reculer(double v) {
-  avancer(-v);
-}
+void reculer(double v) { avancer(-v); }
 
-void arreter() {
-  avancer(0.0);
-}
+void arreter() { avancer(0.0); }
 
 void tourner(double a) {
-  Twist cmd;
-  cmd.linear.x = 0;
-  cmd.angular.z = a;
+  Twist cmd_vel2;
+  cmd_vel2.linear.x = 0;
+  cmd_vel2.angular.z = a;
 
-  pub_vel.publish(cmd);
+  pub_vel.publish(cmd_vel2);
 }
 
 void send_msg(String msg) {
@@ -66,78 +62,78 @@ void send_msg(String msg) {
 
 void kbCallback(std_msgs::Int8 kbInput) {
   switch (kbInput.data) {
-   //COMMANDES DE VITESSE 1
-      case 122 : // z
-      avancer(0.2);
-      break;
-    case 115 : // s
-      reculer(0.2);
-      break;
-    case 113 : // q
-      tourner(0.2);
-      break;
-    case 100 : // d
-      tourner(-0.2);
-      break;
-  //COMMANDES DE VITESSE 2
+    // COMMANDES DE VITESSE 1
+        case 122: // z
+            avancer(0.2);
+            break;
+        case 115: // s
+            reculer(0.2);
+            break;
+        case 113: // q
+            tourner(0.2);
+            break;
+        case 100: // d
+            tourner(-0.2);
+            break;
+            // COMMANDES DE VITESSE 2
 
-     case 116 : // t
-      avancer(0.4);
-      break;
-    case 103 : // g
-      reculer(0.4);
-      break;
-    case 102 : // f
-      tourner(0.4);
-      break;
-    case 104 : // h
-      tourner(-0.4);
-      break;
+        case 116: // t
+            avancer(0.4);
+            break;
+        case 103: // g
+            reculer(0.4);
+            break;
+        case 102: // f
+            tourner(0.4);
+            break;
+        case 104: // h
+            tourner(-0.4);
+            break;
 
-    //COMMANDES DE VITESSE 3
+            // COMMANDES DE VITESSE 3
 
-    case 105 : // i
-      avancer(0.6);
-      break;
-    case 107 : // k
-      reculer(0.6);
-      break;
-    case 106 : // j
-      tourner(0.6);
-      break;
-    case 108 : // l
-      tourner(-0.6);
-      break;
-      //COMMANDES DE VITESSE 4
+        case 105: // i
+            avancer(0.6);
+            break;
+        case 107: // k
+            reculer(0.6);
+            break;
+        case 106: // j
+            tourner(0.6);
+            break;
+        case 108: // l
+            tourner(-0.6);
+            break;
+            // COMMANDES DE VITESSE 4
 
-     case 56 : // 8
-      avancer(0.2);
-      break;
-    case 53 : // 5
-      reculer(0.2);
-      break;
-    case 52 : // 4
-      tourner(0.2);
-      break;
-    case 54 : // 6
-      tourner(-0.2);
-      break;
-  };
+        case 56: // 8
+            avancer(0.2);
+            break;
+        case 53: // 5
+            reculer(0.2);
+            break;
+        case 52: // 4
+            tourner(0.2);
+            break;
+        case 54: // 6
+            tourner(-0.2);
+            break;
+        };
 }
 
-void move() { 
-  ROS_INFO("move"); 
+void move() {
+  ROS_INFO("move");
 
   int mode = AV;
-    if (cpt == 2) {
-      mode = ARR;
-    } else if (cpt == 0) {
-      mode = AV;
-    } else if (mode == AV) {
-      avancer(1);
-    } else {
-      arreter();
-    }
+  if (cpt == 2) {
+    mode = ARR;
+  } else if (cpt == 0) {
+    mode = AV;
+  } else if (mode == AV) {
+    avancer(1);
+  } else {
+    arreter();
+  }
 
   cpt++;
   cpt %= 2;
@@ -151,26 +147,27 @@ int main(int argc, char **argv) {
   NodeHandle nh;
   pub_msg = nh.advertise<String>("/log", 1000);
   cmd = nh.advertise<Twist>("/cmd_vel", 10);
+  pub_vel = nh.advertise<Twist>("/cmd_vel", 10);
+  KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
 
-  
   // a completer...
-  
+
   Rate loop_rate(frequence);
-  
+
   while (ok()) {
 
     // a completer ...
-    msg.data = "Hello World";
-    
-    send_msg(msg);
-    pub_msg.publish(msg);
-    cmd.publish(msg);
-    
-    //INTERCEPTION CLAVIER
+    //msg.data = "Hello World";
 
-    KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
+    //send_msg(msg);
+    //pub_msg.publish(msg);
+    //cmd.publish(msg);
 
-    //INTERCEPTION CLAVIER
+    //move();
+
+    // INTERCEPTION CLAVIER
+
+    // INTERCEPTION CLAVIER
 
     spinOnce();
     loop_rate.sleep();

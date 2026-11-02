@@ -1,9 +1,10 @@
 <launch>
+    <arg name="user_freq" default="0.5" />
 
-<arg name="user_freq" default="0.5" />
+    <param name="freq" type="double" value="$(arg user_freq)" />
 
-<param name="freq" type="double" value="$(arg user_freq)">
+    <node name = "controleur" pkg = "projet_robotic" type = "controleur" output = "screen" />
 
-<node name = "controleur" pkg = "mon_package" type = "controleur" output = "screen" />
+    <node name = "key_input_node" pkg = "projet_robotic" type = "key_input_node" output = "screen" />
 
 </launch>
