@@ -1,9 +1,5 @@
 <launch>
 
-    <node pkg="tb3_projet_NB_EL"
-        type="controleur"
-          name="controleur"
-          output="screen">
     <arg name="user_freq" default="0.5" />
     <param name="freq" type="double" value="$(arg user_freq)" />
 
