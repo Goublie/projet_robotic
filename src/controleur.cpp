@@ -23,6 +23,13 @@ struct position {
   double x;
   double y;
   double angle;
+
+  position(double _x, double _y, double _angle) {
+    this->x = _x;
+    this->y = _y;
+    this->angle = _angle;
+  }
+  double getSize() { return sqrt(x * x + y * y); }
 };
 
 using namespace ros;
@@ -33,13 +40,14 @@ using namespace geometry_msgs;
 void sigintHandler(int sig);
 
 // Les variables globales
-state current_state = manual;
+state current_state = autonomous;
 Publisher pub_msg;
 Publisher pub_vel;
 Publisher pub_cmd;
 Publisher pub_rst;
 String msg;
-position current_pos;
+position current_pos(0, 0, 0);
+position target_pos(1, 0, 0);
 double linear_speed = LINEAR_SPEED;
 double angular_speed = ANGULAR_SPEED;
 double frequence = FREQUENCY;
@@ -143,13 +151,40 @@ void move() {
   cpt %= 2;
 }
 
-void test(const nav_msgs::Odometry::ConstPtr &msg) {
+void collectPosition(const nav_msgs::Odometry::ConstPtr &msg) {
   current_pos.x = msg->pose.pose.position.x;
   current_pos.y = msg->pose.pose.position.y;
   current_pos.angle = tf::getYaw(msg->pose.pose.orientation);
 
   ROS_INFO("Position actuelle : X = %f, Y = %f, theta = %f", current_pos.x,
            current_pos.y, current_pos.angle);
+}
+
+position getVector(position target_pos) {
+  position vector(0, 0, 0);
+  vector.x = target_pos.x - current_pos.x;
+  vector.y = target_pos.y - current_pos.y;
+  vector.angle = target_pos.angle - current_pos.angle;
+  return vector;
+}
+
+void goTo(position target_pos) {
+  position vector = getVector(target_pos);
+
+  if (vector.getSize() < 0.02) {
+    arreter();
+  } else if (vector.getSize() < 1) {
+    double Kp_pos = 0.1;
+    double vitesse_calculee = Kp_pos * vector.getSize();
+
+    if (vitesse_calculee > 0.15) {
+      vitesse_calculee = 0.15;
+    }
+    avancer(vitesse_calculee);
+
+  } else {
+    avancer(0.15);
+  }
 }
 
 int main(int argc, char **argv) {
@@ -163,7 +198,7 @@ int main(int argc, char **argv) {
   pub_vel = nh.advertise<Twist>("/cmd_vel", 10);
   pub_rst = nh.advertise<std_msgs::Empty>("/reset", 10);
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
-  Position_Sub = nh.subscribe("/odom", 1000, test);
+  Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
 
   nh.getParam("user_freq", frequence);
 
@@ -180,7 +215,6 @@ int main(int argc, char **argv) {
   Rate loop_rate(frequence);
 
   while (ok()) {
-
     // a completer ...
     msg.data = "Hello World";
 
@@ -192,7 +226,8 @@ int main(int argc, char **argv) {
     case manual:
       break;
     case autonomous:
-      move();
+      // move();
+      goTo(target_pos);
       break;
     }
 
