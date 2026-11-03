@@ -1,9 +1,12 @@
 #include <csignal>
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/String.h>
 #include <string>
+#include <tf/tf.h>
+#include <std_msgs/Empty.h>
 
 #define FREQUENCY 0.5
 #define MAX_LINEAR_SPEED 0.15
@@ -16,6 +19,12 @@ int cpt = 0;
 
 enum state { manual, autonomous };
 
+struct position {
+  double x;
+  double y;
+  double angle;
+};
+
 using namespace ros;
 using namespace std_msgs;
 using namespace geometry_msgs;
@@ -24,15 +33,18 @@ using namespace geometry_msgs;
 void sigintHandler(int sig);
 
 // Les variables globales
-state actual_state = manual;
+state current_state = manual;
 Publisher pub_msg;
 Publisher pub_vel;
-Publisher cmd;
+Publisher pub_cmd;
+Publisher pub_rst;
 String msg;
+position current_pos;
 double linear_speed = LINEAR_SPEED;
 double angular_speed = ANGULAR_SPEED;
 double frequence = FREQUENCY;
 Subscriber KeyInput_Sub;
+Subscriber Position_Sub;
 
 // L'impl des fonctions
 void avancer(double v) {
@@ -56,7 +68,6 @@ void tourner(double a) {
 }
 
 void send_msg(String msg) {
-
   ROS_INFO("Publisher : %s", msg.data.c_str());
   pub_msg.publish(msg);
   // a completer...
@@ -120,6 +131,11 @@ void kbCallback(std_msgs::Int8 kbInput) {
   case 54: // 6
     tourner(-0.2);
     break;
+
+  case 114: // r to reset
+    std_msgs::Empty reset_msg;
+    pub_rst.publish(reset_msg);
+    break;
   };
 }
 
@@ -141,6 +157,15 @@ void move() {
   cpt %= 2;
 }
 
+void test(const nav_msgs::Odometry::ConstPtr &msg) {
+  current_pos.x = msg->pose.pose.position.x;
+  current_pos.y = msg->pose.pose.position.y;
+  current_pos.angle = tf::getYaw(msg->pose.pose.orientation);
+
+  ROS_INFO("Position actuelle : X = %f, Y = %f, theta = %f", current_pos.x,
+           current_pos.y, current_pos.angle);
+}
+
 int main(int argc, char **argv) {
 
   signal(SIGINT, sigintHandler);
@@ -148,18 +173,20 @@ int main(int argc, char **argv) {
 
   NodeHandle nh;
   pub_msg = nh.advertise<String>("/log", 1000);
-  cmd = nh.advertise<Twist>("/cmd_vel", 10);
+  pub_cmd = nh.advertise<Twist>("/cmd_vel", 10);
   pub_vel = nh.advertise<Twist>("/cmd_vel", 10);
+  pub_rst = nh.advertise<std_msgs::Empty>("/reset", 10);
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
+  Position_Sub = nh.subscribe("/odom", 1000, test);
 
   nh.getParam("user_freq", frequence);
 
   std::string state_str;
-  if (nh.getParam("actual_state", state_str)) {
+  if (nh.getParam("current_state", state_str)) {
     if (state_str == "autonomous") {
-      actual_state = autonomous;
+      current_state = autonomous;
     } else {
-      actual_state = manual;
+      current_state = manual;
     }
   }
   // a completer...
@@ -173,9 +200,9 @@ int main(int argc, char **argv) {
 
     send_msg(msg);
     pub_msg.publish(msg);
-    cmd.publish(msg);
+    pub_cmd.publish(msg);
 
-    switch (actual_state) {
+    switch (current_state) {
     case manual:
       break;
     case autonomous:
