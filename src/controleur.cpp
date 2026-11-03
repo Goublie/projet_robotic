@@ -44,7 +44,6 @@ void sigintHandler(int sig);
 state current_state = autonomous;
 Publisher pub_msg;
 Publisher pub_vel;
-Publisher pub_cmd;
 Publisher pub_rst;
 String msg;
 position current_pos(0, 0, 0);
@@ -220,7 +219,6 @@ int main(int argc, char **argv) {
 
   NodeHandle nh;
   pub_msg = nh.advertise<String>("/log", 1000);
-  pub_cmd = nh.advertise<Twist>("/cmd_vel", 10);
   pub_vel = nh.advertise<Twist>("/cmd_vel", 10);
   pub_rst = nh.advertise<std_msgs::Empty>("/reset", 10);
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
@@ -246,7 +244,7 @@ int main(int argc, char **argv) {
 
     send_msg(msg);
     pub_msg.publish(msg);
-    pub_cmd.publish(msg);
+    pub_vel.publish(msg);
 
     switch (current_state) {
     case manual:
