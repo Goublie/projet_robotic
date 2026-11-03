@@ -1,5 +1,5 @@
-#include <csignal>
 #include <cmath>
+#include <csignal>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
@@ -54,27 +54,26 @@ double frequence = FREQUENCY;
 Subscriber KeyInput_Sub;
 Subscriber Position_Sub;
 
+// fonction de calcul de delta_theta
 
-//fonction de calcul de delta_theta
+// float cal_delta_Theta(float _theta, float _theta0) {
 
-//float cal_delta_Theta(float _theta, float _theta0) {
+// float theta, theta0, delta_theta;
 
-//float theta, theta0, delta_theta;
+// if  (_theta < 0)  theta = _theta + 2 * M_PI;
+// else theta = _theta;
 
-//if  (_theta < 0)  theta = _theta + 2 * M_PI;
-//else theta = _theta;
+// if  (_theta0 < 0)  theta0 = _theta0 + 2 * M_PI;
+// else theta0 = _theta0;
 
-//if  (_theta0 < 0)  theta0 = _theta0 + 2 * M_PI;
-//else theta0 = _theta0;
+// delta_theta = theta - theta0;
 
-//delta_theta = theta - theta0;
-
-//if (delta_theta < -M_PI) {
-  //  delta_theta = delta_theta + 2 * M_PI;
+// if (delta_theta < -M_PI) {
+//   delta_theta = delta_theta + 2 * M_PI;
 //} else {
-   // if (delta_theta >= M_PI) {
-   //   delta_theta = delta_theta - 2 * M_PI;
-   // }
+// if (delta_theta >= M_PI) {
+//   delta_theta = delta_theta - 2 * M_PI;
+// }
 //  }
 //  return delta_theta;
 //}
@@ -244,7 +243,6 @@ int main(int argc, char **argv) {
 
     send_msg(msg);
     pub_msg.publish(msg);
-    pub_vel.publish(msg);
 
     switch (current_state) {
     case manual:
