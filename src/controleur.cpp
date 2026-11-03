@@ -2,11 +2,11 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
+#include <std_msgs/Empty.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/String.h>
 #include <string>
 #include <tf/tf.h>
-#include <std_msgs/Empty.h>
 
 #define FREQUENCY 0.5
 #define MAX_LINEAR_SPEED 0.15
@@ -76,62 +76,48 @@ void send_msg(String msg) {
 void kbCallback(std_msgs::Int8 kbInput) {
   switch (kbInput.data) {
     // COMMANDES DE VITESSE 1
+
   case 122: // z
-    avancer(0.2);
+    avancer(0.05);
     break;
   case 115: // s
-    reculer(0.2);
+    reculer(0.05);
     break;
   case 113: // q
-    tourner(0.2);
+    tourner(0.05);
     break;
   case 100: // d
-    tourner(-0.2);
+    tourner(-0.05);
     break;
     // COMMANDES DE VITESSE 2
 
   case 116: // t
-    avancer(0.4);
+    avancer(0.1);
     break;
   case 103: // g
-    reculer(0.4);
+    reculer(0.1);
     break;
   case 102: // f
-    tourner(0.4);
+    tourner(0.1);
     break;
   case 104: // h
-    tourner(-0.4);
+    tourner(-0.1);
     break;
 
     // COMMANDES DE VITESSE 3
 
   case 105: // i
-    avancer(0.6);
+    avancer(0.15);
     break;
   case 107: // k
-    reculer(0.6);
+    reculer(0.15);
     break;
   case 106: // j
-    tourner(0.6);
+    tourner(0.15);
     break;
   case 108: // l
-    tourner(-0.6);
+    tourner(-0.15);
     break;
-    // COMMANDES DE VITESSE 4
-
-  case 56: // 8
-    avancer(0.2);
-    break;
-  case 53: // 5
-    reculer(0.2);
-    break;
-  case 52: // 4
-    tourner(0.2);
-    break;
-  case 54: // 6
-    tourner(-0.2);
-    break;
-
   case 114: // r to reset
     std_msgs::Empty reset_msg;
     pub_rst.publish(reset_msg);
