@@ -4,7 +4,7 @@
     <param name="freq" type="double" value="$(arg user_freq)" />
 
     <arg name="user_state" default="manual" />
-    <param name="actual_state" type="str" value="$(arg user_state)" />
+    <param name="current_state" type="str" value="$(arg user_state)" />
 
     <node name = "controleur" pkg = "projet_robotic" type = "controleur" output = "screen" />
 

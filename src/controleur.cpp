@@ -106,9 +106,38 @@ void send_msg(String msg) {
 }
 
 void kbCallback(std_msgs::Int8 kbInput) {
-  switch (kbInput.data) {
-    // COMMANDES DE VITESSE 1
+  int key = kbInput.data;
 
+  // Touches de gestion globale
+  switch (key) {
+  case 109: // 'm' pour basculer de mode
+    if (current_state == manual) {
+      current_state = autonomous;
+      ROS_INFO("Mode bascule : AUTONOME");
+    } else {
+      current_state = manual;
+      arreter(); // Stoppe le robot immédiatement lors du passage en manuel
+      ROS_INFO("Mode bascule : MANUEL");
+    }
+    return;
+
+  case 114: // 'r' to reset
+    {
+      std_msgs::Empty reset_msg;
+      pub_rst.publish(reset_msg);
+      ROS_INFO("Reset envoye");
+    }
+    return;
+  }
+
+  // Si on n'est pas en mode manuel, on ignore les touches de commande de déplacement
+  if (current_state != manual) {
+    return;
+  }
+
+  // COMMANDES DE DEPLACEMENT (Actives uniquement en mode manuel)
+  switch (key) {
+  // COMMANDES DE VITESSE 1
   case 122: // z
     avancer(0.05);
     break;
@@ -121,8 +150,8 @@ void kbCallback(std_msgs::Int8 kbInput) {
   case 100: // d
     tourner(-0.05);
     break;
-    // COMMANDES DE VITESSE 2
 
+  // COMMANDES DE VITESSE 2
   case 116: // t
     avancer(0.1);
     break;
@@ -136,8 +165,7 @@ void kbCallback(std_msgs::Int8 kbInput) {
     tourner(-0.1);
     break;
 
-    // COMMANDES DE VITESSE 3
-
+  // COMMANDES DE VITESSE 3
   case 105: // i
     avancer(0.15);
     break;
@@ -150,16 +178,15 @@ void kbCallback(std_msgs::Int8 kbInput) {
   case 108: // l
     tourner(-0.15);
     break;
-  case 114: // r to reset
-    std_msgs::Empty reset_msg;
-    pub_rst.publish(reset_msg);
-    break;
-  };
-}
 
+  default:
+    break;
+  }
+}
+  
 void move() {
   ROS_INFO("move");
-
+    
   int mode = AV;
   if (cpt == 2) {
     mode = ARR;
@@ -223,10 +250,10 @@ int main(int argc, char **argv) {
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
   Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
 
-  nh.getParam("user_freq", frequence);
+  nh.getParam("freq", frequence);
 
   std::string state_str;
-  if (nh.getParam("current_state", state_str)) {
+  if (nh.getParam("actual_state", state_str) || nh.getParam("current_state", state_str)) {
     if (state_str == "autonomous") {
       current_state = autonomous;
     } else {
