@@ -6,6 +6,15 @@
     <arg name="user_state" default="manual" />
     <param name="current_state" type="str" value="$(arg user_state)" />
 
+    <arg name="user_Kp" default="0.3" />
+    <param name="Kp" type="double" value="$(arg user_Kp)" />
+
+    <arg name="user_Ki" default="0.02" />
+    <param name="Ki" type="double" value="$(arg user_Ki)" />
+
+    <arg name="user_Kd" default="0.05" />
+    <param name="Kd" type="double" value="$(arg user_Kd)" />
+
     <node name = "controleur" pkg = "projet_robotic" type = "controleur" output = "screen" />
 
     <node name = "key_input_node" pkg = "projet_robotic" type = "key_input_node" output = "screen" />

@@ -49,7 +49,7 @@ Publisher pub_vel;
 Publisher pub_rst;
 String msg;
 position current_pos(0, 0, 0);
-position target_pos(1, 0, 0);
+position target_pos(-1, 0, 0);
 double linear_speed = LINEAR_SPEED;
 double angular_speed = ANGULAR_SPEED;
 double frequence = FREQUENCY;
@@ -283,18 +283,16 @@ void reset_pid() {
 
 void goTo(position target_pos) {
   position vector = getVector(target_pos);
-  double distance = vector.getSize();
+  double erreur = target_pos.x - current_pos.x;
 
-  if (distance < 0.02) {
+  if (fabs(erreur) < 0.02) {
     arreter();
     reset_pid();
   } else {
-    double vitesse = pid(distance);
+    double vitesse = pid(erreur);
 
     if (vitesse > MAX_LINEAR_SPEED) {
       vitesse = MAX_LINEAR_SPEED;
-    } else if (vitesse < 0.0) {
-      vitesse = 0.0;
     }
 
     avancer(vitesse);
@@ -315,6 +313,10 @@ int main(int argc, char **argv) {
 
   nh.getParam("freq", frequence);
   int cap_log = std::round(2 * frequence) -1;
+
+  nh.getParam("Kp", Kp);
+  nh.getParam("Kd", Kd);
+  nh.getParam("Ki", Ki);
 
   std::string state_str;
   if (nh.getParam("actual_state", state_str) || nh.getParam("current_state", state_str)) {
