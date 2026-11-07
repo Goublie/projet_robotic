@@ -91,6 +91,14 @@ bool premier_appel = true;
 // L'impl des fonctions
 void avancer(double v) {
   Twist cmd_vel1;
+  if (fabs(v) > MAX_LINEAR_SPEED) {
+    if (v < 0) {
+      v = -MAX_LINEAR_SPEED;
+    }
+    else {
+    v = MAX_LINEAR_SPEED;
+    }
+  }
   cmd_vel1.linear.x = v;
   cmd_vel1.angular.z = 0;
 
@@ -103,6 +111,14 @@ void arreter() { avancer(0.0); }
 
 void tourner(double a) {
   Twist cmd_vel2;
+    if (fabs(a) > MAX_ANGULAR_SPEED) {
+      if (a<0) {
+        a = -MAX_ANGULAR_SPEED;
+      } 
+      else {
+        a = MAX_ANGULAR_SPEED;
+      }
+  }
   cmd_vel2.linear.x = 0;
   cmd_vel2.angular.z = a;
 
@@ -112,7 +128,6 @@ void tourner(double a) {
 void send_msg(String msg) {
   ROS_INFO("Publisher : %s", msg.data.c_str());
   pub_msg.publish(msg);
-  // a completer...
 }
 
 void kbCallback(std_msgs::Int8 kbInput) {
@@ -199,20 +214,24 @@ void kbCallback(std_msgs::Int8 kbInput) {
   
 void move() {
   ROS_INFO("move");
-    
-  int mode = AV;
-  if (cpt == 2) {
-    mode = ARR;
-  } else if (cpt == 0) {
-    mode = AV;
-  } else if (mode == AV) {
-    avancer(1);
-  } else {
+
+  switch (cpt) {
+  case 0:
+    avancer(MAX_LINEAR_SPEED);
+    break;
+  case 1:
     arreter();
+    break;
+  case 2:
+    reculer(MAX_LINEAR_SPEED);
+    break;
+  case 3:
+    arreter();
+    break;
   }
 
   cpt++;
-  cpt %= 2;
+  cpt %= 4;
 }
 
 void collectPosition(const nav_msgs::Odometry::ConstPtr &msg) {
