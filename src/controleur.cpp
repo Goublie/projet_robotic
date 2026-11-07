@@ -40,7 +40,7 @@ using namespace std_msgs;
 using namespace geometry_msgs;
 
 void sigintHandler(int sig);
-double pid(double erreur);
+double pid(double erreur, double kp, double ki, double kd, double tolerance, ros::Time &temps_prec, double &erreur_prec, double &somme_erreur, bool &premier_appel);
 void reset_pid();
 
 state current_state = autonomous;
@@ -49,7 +49,7 @@ Publisher pub_vel;
 Publisher pub_rst;
 String msg;
 position current_pos(0, 0, 0);
-position target_pos(-1, 0, 0);
+position target_pos(0, 0, 2.7);
 double linear_speed = LINEAR_SPEED;
 double angular_speed = ANGULAR_SPEED;
 double frequence = FREQUENCY;
@@ -63,30 +63,16 @@ double erreur_prec = 0.0;
 double somme_erreur = 0.0;
 ros::Time temps_prec;
 bool premier_appel = true;
+double cap_error = 0.02;
 
-// fonction de calcul de delta_theta
-
-// float cal_delta_Theta(float _theta, float _theta0) {
-
-// float theta, theta0, delta_theta;
-
-// if  (_theta < 0)  theta = _theta + 2 * M_PI;
-// else theta = _theta;
-
-// if  (_theta0 < 0)  theta0 = _theta0 + 2 * M_PI;
-// else theta0 = _theta0;
-
-// delta_theta = theta - theta0;
-
-// if (delta_theta < -M_PI) {
-//   delta_theta = delta_theta + 2 * M_PI;
-//} else {
-// if (delta_theta >= M_PI) {
-//   delta_theta = delta_theta - 2 * M_PI;
-// }
-//  }
-//  return delta_theta;
-//}
+double Kp_angle = 0.3;
+double Ki_angle = 0.02;
+double Kd_angle = 0.05;
+double erreur_prec_angle = 0.0;
+double somme_erreur_angle = 0.0;
+ros::Time temps_prec_angle;
+bool premier_appel_angle = true;
+double cap_angle = 0.05;
 
 // L'impl des fonctions
 void avancer(double v) {
@@ -251,14 +237,18 @@ position getVector(position target_pos) {
   return vector;
 }
 
-double pid(double erreur) {
+double pid(double erreur, double kp, double ki, double kd, double tolerance, ros::Time &temps_prec, double &erreur_prec, double &somme_erreur, bool &premier_appel) {
+  if (fabs(erreur) < tolerance) {
+    return 0.0;
+  }
+
   ros::Time temps_actuel = ros::Time::now();
 
   if (premier_appel) {
     temps_prec = temps_actuel;
     erreur_prec = erreur;
     premier_appel = false;
-    return Kp * erreur;
+    return kp * erreur;
   }
 
   double dt = (temps_actuel - temps_prec).toSec();
@@ -272,13 +262,41 @@ double pid(double erreur) {
   double derivee = (erreur - erreur_prec) / dt;
   erreur_prec = erreur;
 
-  return Kp * erreur + Ki * somme_erreur + Kd * derivee;
+  return kp * erreur + ki * somme_erreur + kd * derivee;
 }
 
 void reset_pid() {
   somme_erreur = 0.0;
   erreur_prec = 0.0;
   premier_appel = true;
+}
+
+void reset_pid_angle() {
+  somme_erreur_angle = 0.0;
+  erreur_prec_angle = 0.0;
+  premier_appel_angle = true;
+}
+
+float cal_delta_Theta(float _theta, float _theta0) {
+
+  float theta, theta0, delta_theta;
+
+  if  (_theta < 0)  theta = _theta + 2 * M_PI;
+  else theta = _theta;
+
+  if  (_theta0 < 0)  theta0 = _theta0 + 2 * M_PI;
+  else theta0 = _theta0;
+
+  delta_theta = theta - theta0;
+
+  if (delta_theta < -M_PI) {
+      delta_theta = delta_theta + 2 * M_PI;
+  } else {
+      if (delta_theta >= M_PI) {
+        delta_theta = delta_theta - 2 * M_PI;
+      }
+    }
+    return delta_theta;
 }
 
 void goTo(position target_pos) {
@@ -289,13 +307,24 @@ void goTo(position target_pos) {
     arreter();
     reset_pid();
   } else {
-    double vitesse = pid(erreur);
+    double vitesse = pid(erreur, Kp, Ki, Kd, 0.02, temps_prec, erreur_prec, somme_erreur, premier_appel);
 
-    if (vitesse > MAX_LINEAR_SPEED) {
-      vitesse = MAX_LINEAR_SPEED;
-    }
+    vitesse = MAX_LINEAR_SPEED;
 
     avancer(vitesse);
+  }
+}
+
+void turnTo(position target_pos){
+  double erreur_angle = cal_delta_Theta(target_pos.angle, current_pos.angle);
+
+  if (fabs(erreur_angle) < cap_angle) {
+    arreter();
+    reset_pid_angle();
+  } else {
+    double vitesse_angulaire = pid(erreur_angle, Kp_angle, Ki_angle, Kd_angle, cap_angle, temps_prec_angle, erreur_prec_angle, somme_erreur_angle, premier_appel_angle);
+
+    tourner(vitesse_angulaire);
   }
 }
 
@@ -317,6 +346,10 @@ int main(int argc, char **argv) {
   nh.getParam("Kp", Kp);
   nh.getParam("Kd", Kd);
   nh.getParam("Ki", Ki);
+
+  nh.getParam("Kp_angle", Kp_angle);
+  nh.getParam("Kd_angle", Kd_angle);
+  nh.getParam("Ki_angle", Ki_angle);
 
   std::string state_str;
   if (nh.getParam("actual_state", state_str) || nh.getParam("current_state", state_str)) {
@@ -347,7 +380,8 @@ int main(int argc, char **argv) {
       break;
     case autonomous:
       // move();
-      goTo(target_pos);
+      //goTo(target_pos);
+      turnTo(target_pos);
       break;
     }
 

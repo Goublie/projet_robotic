@@ -3,8 +3,10 @@
     <arg name="user_freq" default="10.0" />
     <param name="freq" type="double" value="$(arg user_freq)" />
 
+
     <arg name="user_state" default="manual" />
     <param name="current_state" type="str" value="$(arg user_state)" />
+
 
     <arg name="user_Kp" default="0.3" />
     <param name="Kp" type="double" value="$(arg user_Kp)" />
@@ -14,6 +16,17 @@
 
     <arg name="user_Kd" default="0.05" />
     <param name="Kd" type="double" value="$(arg user_Kd)" />
+
+
+    <arg name="user_Kp_angle" default="0.3" />
+    <param name="Kp_angle" type="double" value="$(arg user_Kp_angle)" />
+
+    <arg name="user_Ki_angle" default="0.02" />
+    <param name="Ki_angle" type="double" value="$(arg user_Ki_angle)" />
+
+    <arg name="user_Kd_angle" default="0.05" />
+    <param name="Kd_angle" type="double" value="$(arg user_Kd_angle)" />
+
 
     <node name = "controleur" pkg = "projet_robotic" type = "controleur" output = "screen" />
 
