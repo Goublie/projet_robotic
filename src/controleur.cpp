@@ -9,13 +9,15 @@
 #include <string>
 #include <tf/tf.h>
 
-#define FREQUENCY 0.5
+#define FREQUENCY 7.5
 #define MAX_LINEAR_SPEED 0.15
 #define MAX_ANGULAR_SPEED 2.84
 #define LINEAR_SPEED 0.1
 #define ANGULAR_SPEED 0.1
 #define AV 1
 #define ARR 2
+
+int cpt_log = 0;
 int cpt = 0;
 
 enum state { manual, autonomous };
@@ -37,10 +39,10 @@ using namespace ros;
 using namespace std_msgs;
 using namespace geometry_msgs;
 
-// Les prototypes des fonctions
 void sigintHandler(int sig);
+double pid(double erreur);
+void reset_pid();
 
-// Les variables globales
 state current_state = autonomous;
 Publisher pub_msg;
 Publisher pub_vel;
@@ -53,6 +55,14 @@ double angular_speed = ANGULAR_SPEED;
 double frequence = FREQUENCY;
 Subscriber KeyInput_Sub;
 Subscriber Position_Sub;
+
+double Kp = 0.3;
+double Ki = 0.02;
+double Kd = 0.05;
+double erreur_prec = 0.0;
+double somme_erreur = 0.0;
+ros::Time temps_prec;
+bool premier_appel = true;
 
 // fonction de calcul de delta_theta
 
@@ -108,21 +118,23 @@ void send_msg(String msg) {
 void kbCallback(std_msgs::Int8 kbInput) {
   int key = kbInput.data;
 
-  // Touches de gestion globale
   switch (key) {
-  case 109: // 'm' pour basculer de mode
+  case 109: //m change de mode
     if (current_state == manual) {
       current_state = autonomous;
+      reset_pid();
       ROS_INFO("Mode bascule : AUTONOME");
     } else {
       current_state = manual;
-      arreter(); // Stoppe le robot immédiatement lors du passage en manuel
+      reset_pid();
+      arreter();
       ROS_INFO("Mode bascule : MANUEL");
     }
     return;
 
-  case 114: // 'r' to reset
+  case 114: //r reset
     {
+      reset_pid();
       std_msgs::Empty reset_msg;
       pub_rst.publish(reset_msg);
       ROS_INFO("Reset envoye");
@@ -180,6 +192,7 @@ void kbCallback(std_msgs::Int8 kbInput) {
     break;
 
   default:
+    arreter();
     break;
   }
 }
@@ -219,22 +232,53 @@ position getVector(position target_pos) {
   return vector;
 }
 
+double pid(double erreur) {
+  ros::Time temps_actuel = ros::Time::now();
+
+  if (premier_appel) {
+    temps_prec = temps_actuel;
+    erreur_prec = erreur;
+    premier_appel = false;
+    return Kp * erreur;
+  }
+
+  double dt = (temps_actuel - temps_prec).toSec();
+  temps_prec = temps_actuel;
+
+  if (dt <= 0.0) {
+    dt = 0.1;
+  }
+
+  somme_erreur += erreur * dt;
+  double derivee = (erreur - erreur_prec) / dt;
+  erreur_prec = erreur;
+
+  return Kp * erreur + Ki * somme_erreur + Kd * derivee;
+}
+
+void reset_pid() {
+  somme_erreur = 0.0;
+  erreur_prec = 0.0;
+  premier_appel = true;
+}
+
 void goTo(position target_pos) {
   position vector = getVector(target_pos);
+  double distance = vector.getSize();
 
-  if (vector.getSize() < 0.02) {
+  if (distance < 0.02) {
     arreter();
-  } else if (vector.getSize() < 1) {
-    double Kp_pos = 0.1;
-    double vitesse_calculee = Kp_pos * vector.getSize();
-
-    if (vitesse_calculee > 0.15) {
-      vitesse_calculee = 0.15;
-    }
-    avancer(vitesse_calculee);
-
+    reset_pid();
   } else {
-    avancer(0.15);
+    double vitesse = pid(distance);
+
+    if (vitesse > MAX_LINEAR_SPEED) {
+      vitesse = MAX_LINEAR_SPEED;
+    } else if (vitesse < 0.0) {
+      vitesse = 0.0;
+    }
+
+    avancer(vitesse);
   }
 }
 
@@ -251,6 +295,7 @@ int main(int argc, char **argv) {
   Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
 
   nh.getParam("freq", frequence);
+  int cap_log = std::round(2 * frequence) -1;
 
   std::string state_str;
   if (nh.getParam("actual_state", state_str) || nh.getParam("current_state", state_str)) {
@@ -268,8 +313,13 @@ int main(int argc, char **argv) {
     // a completer ...
     msg.data = "Hello World";
 
-    send_msg(msg);
-    pub_msg.publish(msg);
+    if (cpt_log >= cap_log){
+      send_msg(msg);
+      cpt_log = 0;
+    }
+    else {
+      cpt_log ++;
+    }
 
     switch (current_state) {
     case manual:
