@@ -32,4 +32,7 @@
 
     <node name = "key_input_node" pkg = "projet_robotic" type = "key_input_node" output = "screen" />
 
+    <node name = "detector" pkg = "projet_robotic" type = "detector" output = "screen" />
+
+
 </launch>

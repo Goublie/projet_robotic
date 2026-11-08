@@ -220,3 +220,7 @@ target_link_libraries(controleur ${catkin_LIBRARIES})
 add_executable(key_input_node src/key_input_node.cpp)
 add_dependencies(key_input_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(key_input_node ${catkin_LIBRARIES})
+
+add_executable(detector src/detector.cpp)
+add_dependencies(detector ${catkin_EXPORTED_TARGETS})
+target_link_libraries(detector ${catkin_LIBRARIES})
