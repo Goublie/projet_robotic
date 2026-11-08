@@ -1,6 +1,7 @@
 #include <cmath>
 #include <csignal>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
@@ -95,6 +96,7 @@ using namespace std_msgs;
 using namespace geometry_msgs;
 
 void sigintHandler(int sig);
+void tourner(double a);
 
 state current_state = autonomous;
 Publisher pub_msg;
@@ -102,12 +104,15 @@ Publisher pub_vel;
 Publisher pub_rst;
 String msg;
 position current_pos(0, 0, 0);
-position target_pos(0, 0, 2.7);
+position start_pos(0, 0, 0);
+position target_pos(1, 1, 0);
 double linear_speed = LINEAR_SPEED;
 double angular_speed = ANGULAR_SPEED;
+bool init_travel = true;
 double frequence = FREQUENCY;
 Subscriber KeyInput_Sub;
 Subscriber Position_Sub;
+Subscriber Target_Sub; 
 
 PID pid_distance(0.3, 0.02, 0.05, 0.02);
 PID pid_angle(0.3, 0.02, 0.05, 0.05);
@@ -129,9 +134,14 @@ void avancer(double v) {
   pub_vel.publish(cmd_vel1);
 }
 
-void reculer(double v) { avancer(-v); }
+void reculer(double v) { 
+  avancer(-v); 
+}
 
-void arreter() { avancer(0.0); }
+void arreter() { 
+  avancer(0.0);
+  tourner(0.0); 
+}
 
 void tourner(double a) {
   Twist cmd_vel2;
@@ -238,7 +248,19 @@ void kbCallback(std_msgs::Int8 kbInput) {
     break;
   }
 }
+ 
+void targetCallback(const geometry_msgs::PoseStamped &Target) {
+  target_pos.x = Target.pose.position.x;
+  target_pos.y = Target.pose.position.y;
+  target_pos.angle = tf::getYaw(Target.pose.orientation);
   
+  pid_distance.reset();
+  pid_angle.reset();
+  
+  current_state = autonomous;
+  ROS_INFO("Nouveau but reçu de RViz : X = %f, Y = %f, theta = %f", target_pos.x, target_pos.y, target_pos.angle);
+}
+
 void move() {
   ROS_INFO("move");
 
@@ -300,28 +322,43 @@ float cal_delta_Theta(float _theta, float _theta0) {
     return delta_theta;
 }
 
-void goTo(position target_pos) {
-  double erreur = target_pos.x - current_pos.x;
-
-  if (fabs(erreur) < pid_distance.tolerance) {
+bool travel(double distance) {
+  if (distance < pid_distance.tolerance) {
     arreter();
     pid_distance.reset();
+    return true; // Deplacement termine
   } else {
-    double vitesse = pid_distance.correct(erreur);
+    double vitesse = pid_distance.correct(distance);
     avancer(vitesse);
+    return false; // Deplacement en cours
   }
 }
 
-void turnTo(position target_pos) {
-  double erreur_angle = cal_delta_Theta(target_pos.angle, current_pos.angle);
+bool turnTo(double targeted_angle) {
+  double erreur_angle = cal_delta_Theta(targeted_angle, current_pos.angle);
 
   if (fabs(erreur_angle) < pid_angle.tolerance) {
     arreter();
     pid_angle.reset();
+    return true;
   } else {
     double vitesse_angulaire = pid_angle.correct(erreur_angle);
     tourner(vitesse_angulaire);
+    return false;
   }
+}
+
+void goTo(position target_pos)
+{
+  //On se tourne vers la position cible
+  //Puis on avance de la distance qui les sépare
+  double targeted_angle = atan2( (target_pos.y-current_pos.y) , (target_pos.x-current_pos.x) );
+  position direction = getVector(target_pos);
+  double distance = direction.getSize();
+  if(turnTo(targeted_angle)){
+    travel(distance);
+  }
+
 }
 
 int main(int argc, char **argv) {
@@ -335,6 +372,7 @@ int main(int argc, char **argv) {
   pub_rst = nh.advertise<std_msgs::Empty>("/reset", 10);
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
   Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
+  Target_Sub = nh.subscribe("/move_base_simple/goal", 10, targetCallback);
 
   nh.getParam("freq", frequence);
   int cap_log = std::round(2 * frequence) - 1;
@@ -376,8 +414,8 @@ int main(int argc, char **argv) {
       break;
     case autonomous:
       // move();
-      //goTo(target_pos);
-      turnTo(target_pos);
+      goTo(target_pos);
+      //turnTo(target_pos.angle);
       break;
     }
 
