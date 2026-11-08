@@ -248,8 +248,8 @@ void kbCallback(std_msgs::Int8 kbInput) {
     break;
   }
 }
- 
-void targetCallback(const geometry_msgs::PoseStamped &Target) {
+
+void targetCallback(geometry_msgs::PoseStamped Target) {
   target_pos.x = Target.pose.position.x;
   target_pos.y = Target.pose.position.y;
   target_pos.angle = tf::getYaw(Target.pose.orientation);
@@ -283,10 +283,10 @@ void move() {
   cpt %= 4;
 }
 
-void collectPosition(const nav_msgs::Odometry::ConstPtr &msg) {
-  current_pos.x = msg->pose.pose.position.x;
-  current_pos.y = msg->pose.pose.position.y;
-  current_pos.angle = tf::getYaw(msg->pose.pose.orientation);
+void collectPosition(nav_msgs::Odometry msg) {
+  current_pos.x = msg.pose.pose.position.x;
+  current_pos.y = msg.pose.pose.position.y;
+  current_pos.angle = tf::getYaw(msg.pose.pose.orientation);
 
   ROS_INFO("Position actuelle : X = %f, Y = %f, theta = %f", current_pos.x,
            current_pos.y, current_pos.angle);
