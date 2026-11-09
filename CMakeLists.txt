@@ -87,7 +87,7 @@ generate_messages(
   sensor_msgs 
   std_msgs
 #   actionlib_msgs#   geometry_msgs#   nav_msgs#   sensor_msgs#   std_msgs
-# )
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
