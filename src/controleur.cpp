@@ -10,8 +10,11 @@
 #include <string>
 #include <tf/tf.h>
 
-//SERVICES
+#include <actionlib/server/simple_action_server.h>
+#include <projet_robotic/MoveAction.h>
 #include <projet_robotic/set_behavior.h>
+
+typedef actionlib::SimpleActionServer<projet_robotic::MoveAction> ActionServer;
 
 #define FREQUENCY 7.5
 #define MAX_LINEAR_SPEED 0.15
@@ -420,6 +423,43 @@ bool setBehaviorCallback(projet_robotic::set_behavior::Request &req, projet_robo
   return true;
 }
 
+void executeAction(const projet_robotic::MoveGoalConstPtr &goal, ActionServer *as) {
+  target_pos.x = goal->pos_x;
+  target_pos.y = goal->pos_y;
+  target_reached = false;
+  current_state = autonomous;
+  pid_distance.reset();
+  pid_angle.reset();
+
+  position start = current_pos;
+  ros::Time start_time = ros::Time::now();
+
+  ros::Rate action_rate(2);
+  while (ros::ok() && !target_reached) {
+    if (as->isPreemptRequested() || current_state != autonomous) {
+      arreter();
+      as->setPreempted();
+      return;
+    }
+
+    projet_robotic::MoveFeedback fb;
+    fb.pos_x_intermediaire = current_pos.x;
+    fb.pos_y_intermediaire = current_pos.y;
+    fb.distance_restante = getVector(target_pos).getSize();
+    as->publishFeedback(fb);
+
+    action_rate.sleep();
+  }
+
+  if (target_reached) {
+    projet_robotic::MoveResult res;
+    res.reached = true;
+    res.distance_totale = sqrt(pow(current_pos.x - start.x, 2) + pow(current_pos.y - start.y, 2));
+    res.temps_ecoule = (ros::Time::now() - start_time).toSec();
+    as->setSucceeded(res);
+  }
+}
+
 int main(int argc, char **argv) {
 
   signal(SIGINT, sigintHandler);
@@ -434,6 +474,8 @@ int main(int argc, char **argv) {
   Target_Sub = nh.subscribe("/move_base_simple/goal", 10, targetCallback);
 
   ServiceServer service_behavior = nh.advertiseService("/set_behavior", setBehaviorCallback);
+  ActionServer action_server(nh, "moving", boost::bind(&executeAction, _1, &action_server), false);
+  action_server.start();
 
   nh.getParam("freq", frequence);
   int cap_log = std::round(2 * frequence) - 1;

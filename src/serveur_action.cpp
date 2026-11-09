@@ -9,17 +9,22 @@ using namespace ros;
 typedef SimpleActionServer<MoveAction> Server;
 
 void execute(const MoveGoalConstPtr &goal, Server *as) {
-
   MoveResult res;
   MoveFeedback fb;
 
   ROS_INFO("goal = %f ! ", goal->pos_x);
 
   int count = 0;
-  ros::Rate loop_rate(1); // 1 hz
+  ros::Rate loop_rate(1);
 
   bool success = true;
   while (count < goal->pos_x) {
+    if (as->isPreemptRequested()) {
+      ROS_INFO("The goal has been cancelled/preempted");
+      as->setPreempted();
+      success = false;
+      break;
+    }
 
     count++;
     fb.pos_x_intermediaire = count;
@@ -31,11 +36,9 @@ void execute(const MoveGoalConstPtr &goal, Server *as) {
 
   if (success) {
     res.reached = true;
-    ROS_INFO("objectif atteint !");
+    ROS_INFO("pos reached !");
     as->setSucceeded(res);
   }
-
-  // A complÃ©ter (voir slide serveur d'action 2/2)
 }
 
 int main(int argc, char **argv) {
@@ -43,7 +46,6 @@ int main(int argc, char **argv) {
   ros::NodeHandle nh;
 
   Server server(nh, "moving", boost::bind(&execute, _1, &server), false);
-
   server.start();
 
   ROS_INFO("serveur demarre et en attente d'un goal ! ");

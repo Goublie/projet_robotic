@@ -14,41 +14,28 @@ typedef SimpleActionClient<MoveAction> Client;
 
 Pose2D position;
 MoveGoal goal;
-
-/**
-###  Vecteur pour y stocker des positions
-###  OpÃ©rations possibles :
-    trajectoire.size() : retourne la taille du vecteur
-    trajectoire.push_back(position) : insÃ¨re une positon Ã  la fin du vecteur
-    trajectoire.erase(trajectoire.begin()) : supprime le premier Ã©lement du
-                                             vecteur
-    trajectoire[0] : permet l'accÃ¨s au premier Ã©lement du vecteur (position
-                     de type Pose2D)
-**/
 std::vector<Pose2D> trajectoire;
 
-void spinThread() { ros::spin(); }
-
-/*
-This method is called when the goal completes
-*/
-void doneCb(const SimpleClientGoalState &s, const MoveResultConstPtr &result) {
-  if (s == SimpleClientGoalState::SUCCEEDED) {
-    ROS_INFO("action se termine avec success ! result = %d", result->reached);
-  } else
-    ROS_INFO("Action is preempted");
+void spinThread() { 
+  ros::spin(); 
 }
 
-/*
- This method is called when the goal becomes active
-*/
-void activeCb() { ROS_INFO("Goal just went active"); }
+void doneCb(const SimpleClientGoalState &s, const MoveResultConstPtr &result) {
+  if (s == SimpleClientGoalState::SUCCEEDED) {
+    ROS_INFO("Action terminee avec succes ! Result = %d, distance = %f m, temps = %f s", 
+             result->reached, result->distance_totale, result->temps_ecoule);
+  } else {
+    ROS_INFO("Action interrompue.");
+  }
+}
 
-/*
-This method is called whenever there is data present on feedback channel
-*/
+void activeCb() { 
+  ROS_INFO("Goal actif"); 
+}
+
 void feedback_callback(const MoveFeedbackConstPtr &feedback) {
-  ROS_INFO("Feedback recu : %f !", feedback->pos_x_intermediaire);
+  ROS_INFO("Feedback recu : X = %f, Y = %f, distance restante = %f", 
+           feedback->pos_x_intermediaire, feedback->pos_y_intermediaire, feedback->distance_restante);
 }
 
 int main(int argc, char **argv) {
@@ -57,25 +44,33 @@ int main(int argc, char **argv) {
 
   boost::thread spin_thread(&spinThread);
 
-  // A Compléter...
-
-  Client client("moving", true); // true -> don't need ros::spin()
+  Client client("moving", true);
   client.waitForServer();
 
-  goal.pos_x = 10;
+  if (argc > 2) {
+    goal.pos_x = atof(argv[1]);
+    goal.pos_y = atof(argv[2]);
+  } else if (argc > 1) {
+    goal.pos_x = atof(argv[1]);
+    goal.pos_y = 0.0;
+  } else {
+    goal.pos_x = 1.0;
+    goal.pos_y = 0.5;
+  }
 
-  // A compléter...
+  ROS_INFO("Envoi du goal : X = %f, Y = %f", goal.pos_x, goal.pos_y);
   client.sendGoal(goal, &doneCb, &activeCb, &feedback_callback);
-  client.waitForResult(ros::Duration(15.0));
+  client.waitForResult(ros::Duration(120.0));
 
-  if (client.getState() == SimpleClientGoalState::SUCCEEDED)
-    ROS_INFO("L'objectif est maintenant atteint !");
-  else
+  if (client.getState() == SimpleClientGoalState::SUCCEEDED) {
+    ROS_INFO("L'objectif est atteint !");
+  } else {
     client.cancelGoal();
+  }
 
-  ROS_INFO("Current State: %s\n", client.getState().toString().c_str());
-  // ... voir slide "les actions"
+  ROS_INFO("Current State: %s", client.getState().toString().c_str());
 
+  ros::shutdown();
   spin_thread.join();
   return 0;
 }

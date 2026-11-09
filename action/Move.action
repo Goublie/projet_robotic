@@ -1,8 +1,10 @@
-# Define the goal
-float32 pos_x  # position cible
+float32 pos_x
+float32 pos_y
 ---
-# Define the result
 bool reached
+float32 distance_totale
+float32 temps_ecoule
 ---
-# Define a feedback message
 float32 pos_x_intermediaire
+float32 pos_y_intermediaire
+float32 distance_restante
