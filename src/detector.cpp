@@ -14,6 +14,7 @@ int SCAN_SAMPLE = 360;
 int ANGLE_REGION = 45;
 std::vector<float> min_distances;
 visualization_msgs::Marker marker;
+visualization_msgs::MarkerArray markerArray;
 Publisher vis_pub;
 
 // PROTOTYPE DES FONCTIONS
@@ -50,7 +51,9 @@ void display_data(){
   marker.color.b = 0.0;
   //only if using a MESH_RESOURCE marker type:
   marker.mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
-  vis_pub.publish( marker );
+  markerArray.markers.clear();
+  markerArray.markers.push_back(marker);
+  vis_pub.publish( markerArray );
 }
 
 // FONCTION CALLBACK
@@ -86,7 +89,7 @@ int main(int argc, char **argv) {
 
   // A COMPLETER
   Subscriber odom_sub = nh.subscribe("/scan", 100, scanCallback);
-  vis_pub = nh.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
+  vis_pub = nh.advertise<visualization_msgs::MarkerArray>( "/lidar_visualization", 0 );
 
   spin();
 
