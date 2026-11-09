@@ -1,0 +1,6 @@
+# requete
+int8 mode   # 0=manuel 1 = auto_standard, 2 = auto_turbo
+---
+# reponse
+bool success
+int8 mode_courant
