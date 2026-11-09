@@ -231,3 +231,12 @@ target_link_libraries(key_input_node ${catkin_LIBRARIES})
 add_executable(detector src/detector.cpp)
 add_dependencies(detector ${catkin_EXPORTED_TARGETS})
 target_link_libraries(detector ${catkin_LIBRARIES})
+
+# AJOUTS DES NOEUDS ACTION ET SERVEURS
+add_executable(serveur_action src/serveur_action.cpp)
+add_dependencies(serveur_action ${catkin_EXPORTED_TARGETS})
+target_link_libraries(serveur_action ${catkin_LIBRARIES})
+
+add_executable(client_action src/client_action.cpp)
+add_dependencies(client_action ${catkin_EXPORTED_TARGETS})
+target_link_libraries(client_action ${catkin_LIBRARIES})
