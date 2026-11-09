@@ -109,6 +109,7 @@ position target_pos(1, 1, 0);
 double linear_speed = LINEAR_SPEED;
 double angular_speed = ANGULAR_SPEED;
 bool init_travel = true;
+bool target_reached = false;
 double frequence = FREQUENCY;
 Subscriber KeyInput_Sub;
 Subscriber Position_Sub;
@@ -258,7 +259,8 @@ void targetCallback(geometry_msgs::PoseStamped Target) {
   pid_angle.reset();
   
   current_state = autonomous;
-  ROS_INFO("Nouveau but reçu de RViz : X = %f, Y = %f, theta = %f", target_pos.x, target_pos.y, target_pos.angle);
+  ROS_INFO("Nouveau but reçu de RViz : X = %f, Y = %f", target_pos.x, target_pos.y);
+  target_reached = false;
 }
 
 void move() {
@@ -356,7 +358,9 @@ void goTo(position target_pos)
   position direction = getVector(target_pos);
   double distance = direction.getSize();
   if(turnTo(targeted_angle)){
-    travel(distance);
+    if(travel(distance)){
+      target_reached = true; 
+    }
   }
 
 }
