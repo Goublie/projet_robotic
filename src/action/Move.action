@@ -1,8 +1,0 @@
-# Define the goal
-float32 pos_x  # position cible
----
-# Define the result
-bool reached
----
-# Define a feedback message
-float32 pos_x_intermediaire
