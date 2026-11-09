@@ -2,13 +2,13 @@
 #include <actionlib/client/simple_action_client.h>
 #include <boost/thread.hpp>
 #include <geometry_msgs/Pose2D.h>
-#include <tb3_projet_vos_initiales/MoveAction.h>
+#include <projet_robotic/MoveAction.h>
 
 using namespace actionlib;
 using namespace ros;
 using namespace std;
 using namespace geometry_msgs;
-using namespace tb3_projet_vos_initiales;
+using namespace projet_robotic;
 
 typedef SimpleActionClient<MoveAction> Client;
 
