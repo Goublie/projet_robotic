@@ -209,10 +209,10 @@ void kbCallback(std_msgs::Int8 kbInput) {
     reculer(0.05);
     break;
   case 113: // q
-    tourner(0.05);
+    tourner(0.94);
     break;
   case 100: // d
-    tourner(-0.05);
+    tourner(-0.94);
     break;
 
   // COMMANDES DE VITESSE 2
@@ -223,10 +223,10 @@ void kbCallback(std_msgs::Int8 kbInput) {
     reculer(0.1);
     break;
   case 102: // f
-    tourner(0.1);
+    tourner(1.88);
     break;
   case 104: // h
-    tourner(-0.1);
+    tourner(-1.88);
     break;
 
   // COMMANDES DE VITESSE 3
@@ -237,10 +237,10 @@ void kbCallback(std_msgs::Int8 kbInput) {
     reculer(0.15);
     break;
   case 106: // j
-    tourner(0.15);
+    tourner(2.83);
     break;
   case 108: // l
-    tourner(-0.15);
+    tourner(2.83);
     break;
 
   default:
