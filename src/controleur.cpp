@@ -357,9 +357,12 @@ void goTo(position target_pos)
   double targeted_angle = atan2( (target_pos.y-current_pos.y) , (target_pos.x-current_pos.x) );
   position direction = getVector(target_pos);
   double distance = direction.getSize();
-  if(turnTo(targeted_angle)){
-    if(travel(distance)){
-      target_reached = true; 
+  
+  if (!target_reached){
+    if(turnTo(targeted_angle)){
+      if(travel(distance)){
+        target_reached = true; 
+      }
     }
   }
 
