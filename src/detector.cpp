@@ -17,7 +17,7 @@ int ANGLE_REGION = 45;
 std::vector<float> min_distances;
 Publisher vis_pub;
 
-float DANGEROUS_ZONE = 0.15;
+float DANGEROUS_ZONE = 0.5;
 float MEASURABLE_ZONE = 3.5;
 
 float get_minimum(const vector<float>& data, int debut, int fin, int *indice_min);

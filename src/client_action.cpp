@@ -57,14 +57,14 @@ int main(int argc, char **argv) {
 
   boost::thread spin_thread(&spinThread);
 
-  // A ComplÃ©ter...
+  // A Compléter...
 
   Client client("moving", true); // true -> don't need ros::spin()
   client.waitForServer();
 
   goal.pos_x = 10;
 
-  // A complÃ©ter...
+  // A compléter...
   client.sendGoal(goal, &doneCb, &activeCb, &feedback_callback);
   client.waitForResult(ros::Duration(15.0));
 

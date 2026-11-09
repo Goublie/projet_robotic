@@ -10,6 +10,9 @@
 #include <string>
 #include <tf/tf.h>
 
+//SERVICES
+#include <projet_robotic/set_behavior.h>
+
 #define FREQUENCY 7.5
 #define MAX_LINEAR_SPEED 0.15
 #define MAX_ANGULAR_SPEED 2.84
@@ -106,8 +109,8 @@ String msg;
 position current_pos(0, 0, 0);
 position start_pos(0, 0, 0);
 position target_pos(1, 1, 0);
-double linear_speed = LINEAR_SPEED;
-double angular_speed = ANGULAR_SPEED;
+double cap_linear_speed = MAX_LINEAR_SPEED / 2.0;
+double cap_angular_speed = MAX_ANGULAR_SPEED / 2.0;
 bool init_travel = true;
 bool target_reached = false;
 double frequence = FREQUENCY;
@@ -118,15 +121,14 @@ Subscriber Target_Sub;
 PID pid_distance(0.3, 0.02, 0.05, 0.02);
 PID pid_angle(0.3, 0.02, 0.05, 0.05);
 
-// L'impl des fonctions
 void avancer(double v) {
   Twist cmd_vel1;
-  if (fabs(v) > MAX_LINEAR_SPEED) {
+  if (fabs(v) > cap_linear_speed) {
     if (v < 0) {
-      v = -MAX_LINEAR_SPEED;
+      v = -cap_linear_speed;
     }
     else {
-    v = MAX_LINEAR_SPEED;
+      v = cap_linear_speed;
     }
   }
   cmd_vel1.linear.x = v;
@@ -146,13 +148,13 @@ void arreter() {
 
 void tourner(double a) {
   Twist cmd_vel2;
-    if (fabs(a) > MAX_ANGULAR_SPEED) {
-      if (a<0) {
-        a = -MAX_ANGULAR_SPEED;
-      } 
-      else {
-        a = MAX_ANGULAR_SPEED;
-      }
+  if (fabs(a) > cap_angular_speed) {
+    if (a < 0) {
+      a = -cap_angular_speed;
+    } 
+    else {
+      a = cap_angular_speed;
+    }
   }
   cmd_vel2.linear.x = 0;
   cmd_vel2.angular.z = a;
@@ -268,13 +270,13 @@ void move() {
 
   switch (cpt) {
   case 0:
-    avancer(MAX_LINEAR_SPEED);
+    avancer(cap_linear_speed);
     break;
   case 1:
     arreter();
     break;
   case 2:
-    reculer(MAX_LINEAR_SPEED);
+    reculer(cap_linear_speed);
     break;
   case 3:
     arreter();
@@ -357,7 +359,7 @@ void goTo(position target_pos)
   double targeted_angle = atan2( (target_pos.y-current_pos.y) , (target_pos.x-current_pos.x) );
   position direction = getVector(target_pos);
   double distance = direction.getSize();
-  
+
   if (!target_reached){
     if(turnTo(targeted_angle)){
       if(travel(distance)){
@@ -365,7 +367,57 @@ void goTo(position target_pos)
       }
     }
   }
+}
 
+bool setBehaviorCallback(projet_robotic::set_behavior::Request &req, projet_robotic::set_behavior::Response &res) {
+  switch (req.mode) {
+    case 0:
+      current_state = manual;
+      arreter();
+
+      pid_distance.reset();
+      pid_angle.reset();
+      
+      res.success = true;
+      res.mode_courant = 0;
+      
+      ROS_INFO("Mode Manu");
+      break;
+
+    case 1:
+      current_state = autonomous;
+      
+      cap_linear_speed = MAX_LINEAR_SPEED / 2.0;
+      cap_angular_speed = MAX_ANGULAR_SPEED / 2.0;
+      
+      res.success = true;
+      res.mode_courant = 1;
+      
+      ROS_INFO("Mode Auto");
+      break;
+
+    case 2:
+      current_state = autonomous;
+      
+      cap_linear_speed = 0.15;
+      cap_angular_speed = MAX_ANGULAR_SPEED;
+      
+      res.success = true;
+      res.mode_courant = 2;
+      
+      ROS_INFO("Mode Turbo");
+      break;
+
+    default:
+      res.success = false;
+      if (current_state == manual) {
+        res.mode_courant = 0;
+      } else {
+        res.mode_courant = (cap_linear_speed == 0.15) ? 2 : 1;
+      }
+      break;
+  }
+  return true;
 }
 
 int main(int argc, char **argv) {
@@ -380,6 +432,8 @@ int main(int argc, char **argv) {
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
   Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
   Target_Sub = nh.subscribe("/move_base_simple/goal", 10, targetCallback);
+
+  ServiceServer service_behavior = nh.advertiseService("/set_behavior", setBehaviorCallback);
 
   nh.getParam("freq", frequence);
   int cap_log = std::round(2 * frequence) - 1;
