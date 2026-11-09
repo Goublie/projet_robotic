@@ -27,6 +27,12 @@
     <arg name="user_Kd_angle" default="0.05" />
     <param name="Kd_angle" type="double" value="$(arg user_Kd_angle)" />
 
+    <arg name="user_x" default="1.0" />
+    <param name="x" type="double" value="$(arg user_x)" />
+
+    <arg name="user_y" default="0.0" />
+    <param name="y" type="double" value="$(arg user_y)" />
+
 
     <node name = "controleur" pkg = "projet_robotic" type = "controleur" output = "screen" />
 

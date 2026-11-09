@@ -385,6 +385,9 @@ int main(int argc, char **argv) {
   nh.getParam("Kd_angle", pid_angle.kd);
   nh.getParam("Ki_angle", pid_angle.ki);
 
+  nh.getParam("x", target_pos.x);
+  nh.getParam("y", target_pos.y);
+
   std::string state_str;
   if (nh.getParam("actual_state", state_str) || nh.getParam("current_state", state_str)) {
     if (state_str == "autonomous") {
