@@ -1,21 +1,29 @@
 #include <cmath>
 #include <csignal>
+#include <string>
+#include <tf/tf.h>
+#include <ros/ros.h>
+
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
-#include <ros/ros.h>
 #include <std_msgs/Empty.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/String.h>
-#include <string>
-#include <tf/tf.h>
 
 #include <actionlib/server/simple_action_server.h>
 #include <projet_robotic/MoveAction.h>
 #include <projet_robotic/set_behavior.h>
 
+using namespace ros;
+using namespace std_msgs;
+using namespace geometry_msgs;
+
 typedef actionlib::SimpleActionServer<projet_robotic::MoveAction> ActionServer;
 
+//==================
+//=== CONSTANTES ===
+//==================
 #define FREQUENCY 7.5
 #define MAX_LINEAR_SPEED 0.15
 #define MAX_ANGULAR_SPEED 2.84
@@ -24,9 +32,9 @@ typedef actionlib::SimpleActionServer<projet_robotic::MoveAction> ActionServer;
 #define AV 1
 #define ARR 2
 
-int cpt_log = 0;
-int cpt = 0;
-
+//==================
+//=== STRUCTURES ===
+//==================
 enum state { manual, autonomous };
 
 struct position {
@@ -97,40 +105,65 @@ struct PID {
   }
 };
 
-using namespace ros;
-using namespace std_msgs;
-using namespace geometry_msgs;
+//==========================
+//=== VARIABLES GLOBALES ===
+//==========================
 
-void sigintHandler(int sig);
-void tourner(double a);
-
+// NAVIGATION
 state current_state = autonomous;
-Publisher pub_msg;
-Publisher pub_vel;
-Publisher pub_rst;
-String msg;
 position current_pos(0, 0, 0);
 position start_pos(0, 0, 0);
 position target_pos(1, 1, 0);
-double cap_linear_speed = MAX_LINEAR_SPEED / 2.0;
-double cap_angular_speed = MAX_ANGULAR_SPEED / 2.0;
 bool init_travel = true;
 bool target_reached = false;
 double frequence = FREQUENCY;
-Subscriber KeyInput_Sub;
-Subscriber Position_Sub;
-Subscriber Target_Sub; 
+int cpt_log = 0;
+int cpt = 0;
+String msg;
 
+// PID
+double cap_linear_speed = MAX_LINEAR_SPEED / 2.0;
+double cap_angular_speed = MAX_ANGULAR_SPEED / 2.0;
 PID pid_distance(0.3, 0.02, 0.05, 0.02);
 PID pid_angle(0.3, 0.02, 0.05, 0.05);
+
+// PUBLISHERS
+Publisher pub_msg;
+Publisher pub_vel;
+Publisher pub_rst;
+
+// SUBSCRIBERS
+Subscriber KeyInput_Sub;
+Subscriber Position_Sub;
+Subscriber Target_Sub;
+
+//===============================
+//=== PROTOTYPES DE FONCTIONS ===
+//===============================
+void sigintHandler(int sig);
+void avancer(double v);
+void reculer(double v);
+void arreter();
+void tourner(double a);
+void send_msg(String msg);
+float cal_delta_Theta(float _theta, float _theta0);
+position getVector(position target_pos);
+bool travel(double distance);
+bool turnTo(double targeted_angle);
+void goTo(position target_pos);
+void move();
+void kbCallback(std_msgs::Int8 kbInput);
+void collectPosition(nav_msgs::Odometry msg);
+void targetCallback(geometry_msgs::PoseStamped Target);
+bool setBehaviorCallback(projet_robotic::set_behavior::Request &req, projet_robotic::set_behavior::Response &res);
+void executeAction(const projet_robotic::MoveGoalConstPtr &goal, ActionServer *as);
 
 void avancer(double v) {
   Twist cmd_vel1;
   if (fabs(v) > cap_linear_speed) {
     if (v < 0) {
       v = -cap_linear_speed;
-    }
-    else {
+    } else {
       v = cap_linear_speed;
     }
   }
@@ -154,8 +187,7 @@ void tourner(double a) {
   if (fabs(a) > cap_angular_speed) {
     if (a < 0) {
       a = -cap_angular_speed;
-    } 
-    else {
+    } else {
       a = cap_angular_speed;
     }
   }
@@ -170,11 +202,107 @@ void send_msg(String msg) {
   pub_msg.publish(msg);
 }
 
+float cal_delta_Theta(float _theta, float _theta0) {
+  float theta, theta0, delta_theta;
+
+  if (_theta < 0) theta = _theta + 2 * M_PI;
+  else theta = _theta;
+
+  if (_theta0 < 0) theta0 = _theta0 + 2 * M_PI;
+  else theta0 = _theta0;
+
+  delta_theta = theta - theta0;
+
+  if (delta_theta < -M_PI) {
+    delta_theta = delta_theta + 2 * M_PI;
+  } else {
+    if (delta_theta >= M_PI) {
+      delta_theta = delta_theta - 2 * M_PI;
+    }
+  }
+  return delta_theta;
+}
+
+position getVector(position target_pos) {
+  position vector(0, 0, 0);
+  vector.x = target_pos.x - current_pos.x;
+  vector.y = target_pos.y - current_pos.y;
+  vector.angle = target_pos.angle - current_pos.angle;
+  return vector;
+}
+
+bool travel(double distance) {
+  if (distance < pid_distance.tolerance) {
+    arreter();
+    pid_distance.reset();
+    return true; // Deplacement termine
+  } else {
+    double vitesse = pid_distance.correct(distance);
+    avancer(vitesse);
+    return false; // Deplacement en cours
+  }
+}
+
+bool turnTo(double targeted_angle) {
+  double erreur_angle = cal_delta_Theta(targeted_angle, current_pos.angle);
+
+  if (fabs(erreur_angle) < pid_angle.tolerance) {
+    arreter();
+    pid_angle.reset();
+    return true;
+  } else {
+    double vitesse_angulaire = pid_angle.correct(erreur_angle);
+    tourner(vitesse_angulaire);
+    return false;
+  }
+}
+
+void goTo(position target_pos) {
+  //On se tourne vers la position cible
+  //Puis on avance de la distance qui les sépare
+  double targeted_angle = atan2((target_pos.y - current_pos.y), (target_pos.x - current_pos.x));
+  position direction = getVector(target_pos);
+  double distance = direction.getSize();
+
+  if (!target_reached) {
+    if (turnTo(targeted_angle)) {
+      if (travel(distance)) {
+        target_reached = true; 
+      }
+    }
+  }
+}
+
+void move() {
+  ROS_INFO("move");
+
+  switch (cpt) {
+  case 0:
+    avancer(cap_linear_speed);
+    break;
+  case 1:
+    arreter();
+    break;
+  case 2:
+    reculer(cap_linear_speed);
+    break;
+  case 3:
+    arreter();
+    break;
+  }
+
+  cpt++;
+  cpt %= 4;
+}
+
+//=================
+//=== CALLBACKS ===
+//=================
 void kbCallback(std_msgs::Int8 kbInput) {
   int key = kbInput.data;
 
   switch (key) {
-  case 109: //m change de mode
+  case 109: // m change de mode
     if (current_state == manual) {
       current_state = autonomous;
       pid_distance.reset();
@@ -189,7 +317,7 @@ void kbCallback(std_msgs::Int8 kbInput) {
     }
     return;
 
-  case 114: //r reset
+  case 114: // r reset
     {
       pid_distance.reset();
       pid_angle.reset();
@@ -255,6 +383,15 @@ void kbCallback(std_msgs::Int8 kbInput) {
   }
 }
 
+void collectPosition(nav_msgs::Odometry msg) {
+  current_pos.x = msg.pose.pose.position.x;
+  current_pos.y = msg.pose.pose.position.y;
+  current_pos.angle = tf::getYaw(msg.pose.pose.orientation);
+
+  ROS_INFO("Position actuelle : X = %f, Y = %f, theta = %f", current_pos.x,
+           current_pos.y, current_pos.angle);
+}
+
 void targetCallback(geometry_msgs::PoseStamped Target) {
   target_pos.x = Target.pose.position.x;
   target_pos.y = Target.pose.position.y;
@@ -268,110 +405,9 @@ void targetCallback(geometry_msgs::PoseStamped Target) {
   target_reached = false;
 }
 
-void move() {
-  ROS_INFO("move");
-
-  switch (cpt) {
-  case 0:
-    avancer(cap_linear_speed);
-    break;
-  case 1:
-    arreter();
-    break;
-  case 2:
-    reculer(cap_linear_speed);
-    break;
-  case 3:
-    arreter();
-    break;
-  }
-
-  cpt++;
-  cpt %= 4;
-}
-
-void collectPosition(nav_msgs::Odometry msg) {
-  current_pos.x = msg.pose.pose.position.x;
-  current_pos.y = msg.pose.pose.position.y;
-  current_pos.angle = tf::getYaw(msg.pose.pose.orientation);
-
-  ROS_INFO("Position actuelle : X = %f, Y = %f, theta = %f", current_pos.x,
-           current_pos.y, current_pos.angle);
-}
-
-position getVector(position target_pos) {
-  position vector(0, 0, 0);
-  vector.x = target_pos.x - current_pos.x;
-  vector.y = target_pos.y - current_pos.y;
-  vector.angle = target_pos.angle - current_pos.angle;
-  return vector;
-}
-
-float cal_delta_Theta(float _theta, float _theta0) {
-
-  float theta, theta0, delta_theta;
-
-  if  (_theta < 0)  theta = _theta + 2 * M_PI;
-  else theta = _theta;
-
-  if  (_theta0 < 0)  theta0 = _theta0 + 2 * M_PI;
-  else theta0 = _theta0;
-
-  delta_theta = theta - theta0;
-
-  if (delta_theta < -M_PI) {
-      delta_theta = delta_theta + 2 * M_PI;
-  } else {
-      if (delta_theta >= M_PI) {
-        delta_theta = delta_theta - 2 * M_PI;
-      }
-    }
-    return delta_theta;
-}
-
-bool travel(double distance) {
-  if (distance < pid_distance.tolerance) {
-    arreter();
-    pid_distance.reset();
-    return true; // Deplacement termine
-  } else {
-    double vitesse = pid_distance.correct(distance);
-    avancer(vitesse);
-    return false; // Deplacement en cours
-  }
-}
-
-bool turnTo(double targeted_angle) {
-  double erreur_angle = cal_delta_Theta(targeted_angle, current_pos.angle);
-
-  if (fabs(erreur_angle) < pid_angle.tolerance) {
-    arreter();
-    pid_angle.reset();
-    return true;
-  } else {
-    double vitesse_angulaire = pid_angle.correct(erreur_angle);
-    tourner(vitesse_angulaire);
-    return false;
-  }
-}
-
-void goTo(position target_pos)
-{
-  //On se tourne vers la position cible
-  //Puis on avance de la distance qui les sépare
-  double targeted_angle = atan2( (target_pos.y-current_pos.y) , (target_pos.x-current_pos.x) );
-  position direction = getVector(target_pos);
-  double distance = direction.getSize();
-
-  if (!target_reached){
-    if(turnTo(targeted_angle)){
-      if(travel(distance)){
-        target_reached = true; 
-      }
-    }
-  }
-}
-
+//===============
+//=== SERVICE ===
+//===============
 bool setBehaviorCallback(projet_robotic::set_behavior::Request &req, projet_robotic::set_behavior::Response &res) {
   switch (req.mode) {
     case 0:
@@ -423,6 +459,9 @@ bool setBehaviorCallback(projet_robotic::set_behavior::Request &req, projet_robo
   return true;
 }
 
+//==============
+//=== ACTION ===
+//==============
 void executeAction(const projet_robotic::MoveGoalConstPtr &goal, ActionServer *as) {
   target_pos.x = goal->pos_x;
   target_pos.y = goal->pos_y;
@@ -461,22 +500,27 @@ void executeAction(const projet_robotic::MoveGoalConstPtr &goal, ActionServer *a
 }
 
 int main(int argc, char **argv) {
-
   signal(SIGINT, sigintHandler);
   ros::init(argc, argv, "controleur", ros::init_options::NoSigintHandler);
 
   NodeHandle nh;
+
+  // PUBLISHERS 
   pub_msg = nh.advertise<String>("/log", 1000);
   pub_vel = nh.advertise<Twist>("/cmd_vel", 10);
   pub_rst = nh.advertise<std_msgs::Empty>("/reset", 10);
+
+  // SUBSCRIBERS
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
   Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
   Target_Sub = nh.subscribe("/move_base_simple/goal", 10, targetCallback);
 
+  // SERVICES & ACTIONS
   ServiceServer service_behavior = nh.advertiseService("/set_behavior", setBehaviorCallback);
   ActionServer action_server(nh, "moving", boost::bind(&executeAction, _1, &action_server), false);
   action_server.start();
 
+  // PARAMETRES
   nh.getParam("freq", frequence);
   int cap_log = std::round(2 * frequence) - 1;
 
@@ -499,29 +543,24 @@ int main(int argc, char **argv) {
       current_state = manual;
     }
   }
-  // a completer...
 
   Rate loop_rate(frequence);
 
   while (ok()) {
-    // a completer ...
     msg.data = "Hello World";
 
-    if (cpt_log >= cap_log){
+    if (cpt_log >= cap_log) {
       send_msg(msg);
       cpt_log = 0;
-    }
-    else {
-      cpt_log ++;
+    } else {
+      cpt_log++;
     }
 
     switch (current_state) {
     case manual:
       break;
     case autonomous:
-      // move();
       goTo(target_pos);
-      //turnTo(target_pos.angle);
       break;
     }
 
@@ -531,23 +570,11 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-/**
- *
- * SIGINT handler.
- * Exit code gracefully.
- *
- * @param sig - catched signal.
- *
- */
-
+//======================
+//=== GESTION SIGINT ===
+//======================
 void sigintHandler(int sig) {
-  // Log quit
   ROS_INFO("Exiting program gracefully ...");
-
   arreter();
-  // MESSAGE A PUBLIER le MESSAGE
-
-  // Kill all open subscriptions, publications, service calls, and service
-  // servers
   shutdown();
 }
