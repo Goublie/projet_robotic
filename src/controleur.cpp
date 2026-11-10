@@ -10,6 +10,7 @@
 #include <std_msgs/Empty.h>
 #include <std_msgs/Int8.h>
 #include <std_msgs/String.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <actionlib/server/simple_action_server.h>
 #include <projet_robotic/MoveAction.h>
@@ -116,6 +117,7 @@ position start_pos(0, 0, 0);
 position target_pos(1, 1, 0);
 bool init_travel = true;
 bool target_reached = false;
+bool obstacle_front = false;
 double frequence = FREQUENCY;
 int cpt_log = 0;
 int cpt = 0;
@@ -136,6 +138,7 @@ Publisher pub_rst;
 Subscriber KeyInput_Sub;
 Subscriber Position_Sub;
 Subscriber Target_Sub;
+Subscriber Lidar_Sub;
 
 //===============================
 //=== PROTOTYPES DE FONCTIONS ===
@@ -155,10 +158,17 @@ void move();
 void kbCallback(std_msgs::Int8 kbInput);
 void collectPosition(nav_msgs::Odometry msg);
 void targetCallback(geometry_msgs::PoseStamped Target);
+void lidarCallback(const visualization_msgs::MarkerArray &markers);
 bool setBehaviorCallback(projet_robotic::set_behavior::Request &req, projet_robotic::set_behavior::Response &res);
 void executeAction(const projet_robotic::MoveGoalConstPtr &goal, ActionServer *as);
 
 void avancer(double v) {
+  if (obstacle_front && v > 0) {
+    ROS_INFO("Objet détecté.");
+    arreter();
+    return;
+  }
+
   Twist cmd_vel1;
   if (fabs(v) > cap_linear_speed) {
     if (v < 0) {
@@ -405,6 +415,23 @@ void targetCallback(geometry_msgs::PoseStamped Target) {
   target_reached = false;
 }
 
+void lidarCallback(const visualization_msgs::MarkerArray &markers) {
+  bool obstacle = false;
+  for (size_t i = 0; i < markers.markers.size(); ++i) {
+    int id = markers.markers[i].id;
+    // Les 4 zones de devant sont 0, 1, 6 et 7
+    if (id == 0 || id == 1 || id == 6 || id == 7) {
+      // Zone rouge : marker rouge actif (r = 1.0, g = 0.0, a > 0.0)
+      if (markers.markers[i].color.r > 0.9f) {
+        obstacle = true;
+        break;
+      }
+    }
+  }
+
+  obstacle_front = obstacle;
+}
+
 //===============
 //=== SERVICE ===
 //===============
@@ -514,6 +541,7 @@ int main(int argc, char **argv) {
   KeyInput_Sub = nh.subscribe("/keyboard_input", 1000, kbCallback);
   Position_Sub = nh.subscribe("/odom", 1000, collectPosition);
   Target_Sub = nh.subscribe("/move_base_simple/goal", 10, targetCallback);
+  Lidar_Sub = nh.subscribe("/lidar_visualization", 10, lidarCallback);
 
   // SERVICES & ACTIONS
   ServiceServer service_behavior = nh.advertiseService("/set_behavior", setBehaviorCallback);

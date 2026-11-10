@@ -3,6 +3,7 @@
 #include <boost/thread.hpp>
 #include <geometry_msgs/Pose2D.h>
 #include <projet_robotic/MoveAction.h>
+#include <nav_msgs/Path.h>
 
 using namespace actionlib;
 using namespace ros;
@@ -16,14 +17,22 @@ Pose2D position;
 MoveGoal goal;
 std::vector<Pose2D> trajectoire;
 
+Subscriber path_sub;
+
 void spinThread() { 
   ros::spin(); 
 }
 
 void doneCb(const SimpleClientGoalState &s, const MoveResultConstPtr &result) {
   if (s == SimpleClientGoalState::SUCCEEDED) {
-    ROS_INFO("Action terminee avec succes ! Result = %d, distance = %f m, temps = %f s", 
-             result->reached, result->distance_totale, result->temps_ecoule);
+    ROS_INFO("Action terminee avec succes ! Result = %d, distance = %f m, temps = %f s", result->reached, result->distance_totale, result->temps_ecoule);
+    
+    //client.sendGoal(goal, &doneCb, &activeCb, &feedback_callback);
+    //client.waitForResult(ros::Duration(120.0));
+
+    //if (trajectoire.empty()){
+    //  ROS_INFO("Trajectoire achevée.");
+    //}
   } else {
     ROS_INFO("Action interrompue.");
   }
@@ -38,9 +47,20 @@ void feedback_callback(const MoveFeedbackConstPtr &feedback) {
            feedback->pos_x_intermediaire, feedback->pos_y_intermediaire, feedback->distance_restante);
 }
 
+void pathCallback(nav_msgs::Path path){
+  trajectoire.clear();
+  for (int i=0; i<path.poses.size(); i++){
+    position.x = path.poses[i].pose.position.x;
+    position.y = path.poses[i].pose.position.y;
+    trajectoire.push_back(position);
+  }
+}
+
 int main(int argc, char **argv) {
   ros::init(argc, argv, "planner");
   ros::NodeHandle nh;
+
+  nh.subscribe("/consigne_trajectoire",100, pathCallback);
 
   boost::thread spin_thread(&spinThread);
 
