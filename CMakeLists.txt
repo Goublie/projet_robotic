@@ -221,7 +221,7 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 add_executable(controleur src/controleur.cpp)
-add_dependencies(controleur ${catkin_EXPORTED_TARGETS})
+add_dependencies(controleur ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(controleur ${catkin_LIBRARIES})
 
 add_executable(key_input_node src/key_input_node.cpp)
@@ -234,9 +234,9 @@ target_link_libraries(detector ${catkin_LIBRARIES})
 
 # AJOUTS DES NOEUDS ACTION ET SERVEURS
 add_executable(serveur_action src/serveur_action.cpp)
-add_dependencies(serveur_action ${catkin_EXPORTED_TARGETS})
+add_dependencies(serveur_action ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(serveur_action ${catkin_LIBRARIES})
 
 add_executable(client_action src/client_action.cpp)
-add_dependencies(client_action ${catkin_EXPORTED_TARGETS})
+add_dependencies(client_action ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(client_action ${catkin_LIBRARIES})
