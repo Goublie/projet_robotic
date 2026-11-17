@@ -27,7 +27,7 @@ void doneCb(const SimpleClientGoalState &s, const MoveResultConstPtr &result) {
   if (s == SimpleClientGoalState::SUCCEEDED) {
     ROS_INFO("Action terminee avec succes ! Result = %d, distance = %f m, temps = %f s", result->reached, result->distance_totale, result->temps_ecoule);
 
- ²   if (trajectoire.empty()) {
+    if (trajectoire.empty()) {
       ROS_INFO("Trajectoire complétée.");
     }
   } else {
