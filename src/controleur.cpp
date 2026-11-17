@@ -147,6 +147,7 @@ void sigintHandler(int sig);
 void avancer(double v);
 void reculer(double v);
 void arreter();
+void reset();
 void tourner(double a);
 void send_msg(String msg);
 float cal_delta_Theta(float _theta, float _theta0);
@@ -190,6 +191,18 @@ void reculer(double v) {
 void arreter() { 
   avancer(0.0);
   tourner(0.0); 
+}
+
+void reset() {
+  arreter();
+  pid_distance.reset();
+  pid_angle.reset();
+  target_reached = false;
+  init_travel = true;
+  cpt = 0;
+  std_msgs::Empty reset_msg;
+  pub_rst.publish(reset_msg);
+  ROS_INFO("Reset effectue");
 }
 
 void tourner(double a) {
@@ -328,13 +341,7 @@ void kbCallback(std_msgs::Int8 kbInput) {
     return;
 
   case 114: // r reset
-    {
-      pid_distance.reset();
-      pid_angle.reset();
-      std_msgs::Empty reset_msg;
-      pub_rst.publish(reset_msg);
-      ROS_INFO("Reset envoye");
-    }
+    reset();
     return;
   }
 
@@ -571,6 +578,9 @@ int main(int argc, char **argv) {
       current_state = manual;
     }
   }
+
+  // Reset initial pour s'assurer que le robot part de zero
+  reset();
 
   Rate loop_rate(frequence);
 
