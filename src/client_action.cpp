@@ -20,19 +20,16 @@ std::vector<Pose2D> trajectoire;
 Subscriber path_sub;
 
 void spinThread() { 
-  ros::spin(); 
+  spin(); 
 }
 
 void doneCb(const SimpleClientGoalState &s, const MoveResultConstPtr &result) {
   if (s == SimpleClientGoalState::SUCCEEDED) {
     ROS_INFO("Action terminee avec succes ! Result = %d, distance = %f m, temps = %f s", result->reached, result->distance_totale, result->temps_ecoule);
-    
-    //client.sendGoal(goal, &doneCb, &activeCb, &feedback_callback);
-    //client.waitForResult(ros::Duration(120.0));
 
-    //if (trajectoire.empty()){
-    //  ROS_INFO("Trajectoire achevée.");
-    //}
+ ²   if (trajectoire.empty()) {
+      ROS_INFO("Trajectoire complétée.");
+    }
   } else {
     ROS_INFO("Action interrompue.");
   }
@@ -54,43 +51,39 @@ void pathCallback(nav_msgs::Path path){
     position.y = path.poses[i].pose.position.y;
     trajectoire.push_back(position);
   }
+
 }
 
 int main(int argc, char **argv) {
-  ros::init(argc, argv, "planner");
-  ros::NodeHandle nh;
-
-  nh.subscribe("/consigne_trajectoire",100, pathCallback);
-
-  boost::thread spin_thread(&spinThread);
-
+  init(argc, argv, "planner");
+  NodeHandle nh;
+  
   Client client("moving", true);
+  
+  path_sub = nh.subscribe("/consigne_trajectoire", 10, pathCallback);
   client.waitForServer();
-
-  if (argc > 2) {
-    goal.pos_x = atof(argv[1]);
-    goal.pos_y = atof(argv[2]);
-  } else if (argc > 1) {
-    goal.pos_x = atof(argv[1]);
-    goal.pos_y = 0.0;
-  } else {
-    goal.pos_x = 1.0;
-    goal.pos_y = 0.5;
+  Rate loop_rate(10);
+  while (ok()) {
+  
+    // Si on a des points dans notre file d'attente
+    if (!trajectoire.empty()) {
+      goal.pos_x = trajectoire[0].x;
+      goal.pos_y = trajectoire[0].y;
+      trajectoire.erase(trajectoire.begin());
+      ROS_INFO("Envoi du point : X = %f, Y = %f (restants : %zu)", goal.pos_x, goal.pos_y, trajectoire.size());
+      client.sendGoal(goal);
+      
+      // On attend que le robot arrive avant de passer au point suivant
+      client.waitForResult(Duration(120.0));
+      if (client.getState() == SimpleClientGoalState::SUCCEEDED) {
+        ROS_INFO("Point atteint !");
+        if (trajectoire.empty()) {
+          ROS_INFO("Trajectoire entièrement terminée !");
+        }
+      }
+    }
+    spinOnce();
+    loop_rate.sleep();
   }
-
-  ROS_INFO("Envoi du goal : X = %f, Y = %f", goal.pos_x, goal.pos_y);
-  client.sendGoal(goal, &doneCb, &activeCb, &feedback_callback);
-  client.waitForResult(ros::Duration(120.0));
-
-  if (client.getState() == SimpleClientGoalState::SUCCEEDED) {
-    ROS_INFO("L'objectif est atteint !");
-  } else {
-    client.cancelGoal();
-  }
-
-  ROS_INFO("Current State: %s", client.getState().toString().c_str());
-
-  ros::shutdown();
-  spin_thread.join();
   return 0;
 }
